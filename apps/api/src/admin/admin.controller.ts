@@ -38,6 +38,14 @@ export class AdminController {
     );
   }
 
+  @Get('disputes')
+  listDisputes(
+    @Query('status')
+    status?: 'open' | 'fact_check_requested' | 'resolved' | 'escalated',
+  ) {
+    return this.adminService.listDisputes(status);
+  }
+
   @Post('photographers/:id/approve')
   approve(@Param('id') id: string) {
     return this.adminService.approvePhotographer(id);

@@ -69,6 +69,30 @@ export class AdminService {
     });
   }
 
+  listDisputes(status?: 'open' | 'fact_check_requested' | 'resolved' | 'escalated') {
+    return this.prisma.dispute.findMany({
+      where: status
+        ? { status }
+        : { status: { in: ['open', 'fact_check_requested', 'escalated'] } },
+      select: {
+        id: true,
+        bookingId: true,
+        raisedBy: true,
+        type: true,
+        status: true,
+        photographerResponseDueAt: true,
+        resolution: true,
+        resolvedAt: true,
+        booking: {
+          select: {
+            customer: { select: { name: true } },
+            photographer: { select: { businessName: true } },
+          },
+        },
+      },
+    });
+  }
+
   async approvePhotographer(photographerId: string) {
     const photographer = await this.prisma.photographer.findUnique({
       where: { id: photographerId },

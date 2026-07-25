@@ -249,6 +249,21 @@ export interface AdminPayment {
   };
 }
 
+export interface AdminDispute {
+  id: string;
+  bookingId: string;
+  raisedBy: "customer" | "photographer";
+  type: DisputeType;
+  status: DisputeStatus;
+  photographerResponseDueAt: string | null;
+  resolution: string | null;
+  resolvedAt: string | null;
+  booking: {
+    customer: { name: string };
+    photographer: { businessName: string };
+  };
+}
+
 export interface AdminReview {
   id: string;
   bookingId: string;
