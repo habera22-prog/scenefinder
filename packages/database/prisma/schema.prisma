@@ -450,6 +450,7 @@ model Review {
   willReuse           Boolean @map("will_reuse")
   category            String? // 표시용(행사/아이/외국인/여행동행)
   content             String?
+  isBlinded           Boolean @default(false) @map("is_blinded") // 관리자 블라인드 처리 (API 3-12)
 
   booking Booking @relation(fields: [bookingId], references: [id])
 
