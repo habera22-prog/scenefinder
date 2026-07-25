@@ -24,6 +24,7 @@ import { ShootCategoriesModule } from './shoot-categories/shoot-categories.modul
 import { UploadsModule } from './uploads/uploads.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PagesModule } from './pages/pages.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { PagesModule } from './pages/pages.module';
     UploadsModule,
     FavoritesModule,
     PagesModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -127,6 +127,25 @@ enum ConsentType {
   portfolio_none
 }
 
+enum SupportTicketCategory {
+  general
+  payment
+  booking_change
+  cancellation_refund
+  photographer_report
+  delivery_dispute
+  photo_deletion
+  privacy
+  partnership
+  other
+}
+
+enum SupportTicketStatus {
+  open
+  answered
+  closed
+}
+
 // ─────────────────────────────────────────────
 // 2-1. users (공통 회원)
 // ─────────────────────────────────────────────
@@ -142,10 +161,11 @@ model User {
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
-  photographer Photographer?
-  bookings     Booking[]     @relation("CustomerBookings")
-  messages     Message[]
-  favorites    Favorite[]
+  photographer   Photographer?
+  bookings       Booking[]       @relation("CustomerBookings")
+  messages       Message[]
+  favorites      Favorite[]
+  supportTickets SupportTicket[]
 
   @@map("users")
 }
@@ -295,6 +315,7 @@ model Booking {
   disputes       Dispute[]
   consents       Consent[]
   settlementItem SettlementItem?
+  supportTickets SupportTicket[]
 
   @@map("bookings")
 }
@@ -509,4 +530,26 @@ model Consent {
   booking Booking @relation(fields: [bookingId], references: [id])
 
   @@map("consents")
+}
+
+// ─────────────────────────────────────────────
+// 2-16. support_tickets (고객센터 1:1/긴급 문의)
+// ─────────────────────────────────────────────
+
+model SupportTicket {
+  id            String                @id @default(uuid()) @db.Uuid
+  userId        String                @map("user_id") @db.Uuid
+  bookingId     String?               @map("booking_id") @db.Uuid // 특정 예약 관련 문의인 경우
+  category      SupportTicketCategory @default(general)
+  isEmergency   Boolean               @default(false) @map("is_emergency") // 촬영 전날/당일 긴급 채널
+  content       String
+  status        SupportTicketStatus   @default(open)
+  adminResponse String?               @map("admin_response")
+  respondedAt   DateTime?             @map("responded_at")
+  createdAt     DateTime              @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@map("support_tickets")
 }

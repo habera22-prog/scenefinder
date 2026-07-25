@@ -74,6 +74,14 @@ export function Header() {
                   관리자
                 </Link>
               )}
+              {user.role !== "admin" && (
+                <Link
+                  href="/me/support"
+                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                >
+                  고객센터
+                </Link>
+              )}
               <span className="hidden text-sm text-muted-foreground sm:inline">
                 {user.name}님
               </span>

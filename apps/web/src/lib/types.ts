@@ -216,6 +216,36 @@ export interface Payment {
   paidAt: string | null;
 }
 
+export type SupportTicketCategory =
+  | "general"
+  | "payment"
+  | "booking_change"
+  | "cancellation_refund"
+  | "photographer_report"
+  | "delivery_dispute"
+  | "photo_deletion"
+  | "privacy"
+  | "partnership"
+  | "other";
+export type SupportTicketStatus = "open" | "answered" | "closed";
+
+export interface SupportTicket {
+  id: string;
+  category: SupportTicketCategory;
+  isEmergency: boolean;
+  content: string;
+  status: SupportTicketStatus;
+  adminResponse: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminSupportTicket extends SupportTicket {
+  userId: string;
+  bookingId: string | null;
+  user: { name: string; phone: string | null; role: UserRole };
+}
+
 export interface AdminDashboard {
   newCustomersThisWeek: number;
   newPhotographersThisWeek: number;

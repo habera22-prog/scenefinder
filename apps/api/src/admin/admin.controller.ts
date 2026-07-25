@@ -46,6 +46,16 @@ export class AdminController {
     return this.adminService.listDisputes(status);
   }
 
+  @Get('support-tickets')
+  listSupportTickets(@Query('status') status?: 'open' | 'answered' | 'closed') {
+    return this.adminService.listSupportTickets(status);
+  }
+
+  @Post('support-tickets/:id/respond')
+  respondToTicket(@Param('id') id: string, @Body('response') response: string) {
+    return this.adminService.respondToTicket(id, response);
+  }
+
   @Post('photographers/:id/approve')
   approve(@Param('id') id: string) {
     return this.adminService.approvePhotographer(id);

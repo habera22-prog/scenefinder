@@ -93,6 +93,27 @@ export class AdminService {
     });
   }
 
+  listSupportTickets(status?: 'open' | 'answered' | 'closed') {
+    return this.prisma.supportTicket.findMany({
+      where: status ? { status } : undefined,
+      include: { user: { select: { name: true, phone: true, role: true } } },
+      orderBy: [{ isEmergency: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async respondToTicket(ticketId: string, response: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+    });
+    if (!ticket) {
+      throw new NotFoundException('문의를 찾을 수 없습니다.');
+    }
+    return this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: { adminResponse: response, status: 'answered', respondedAt: new Date() },
+    });
+  }
+
   async approvePhotographer(photographerId: string) {
     const photographer = await this.prisma.photographer.findUnique({
       where: { id: photographerId },
