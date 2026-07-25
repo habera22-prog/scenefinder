@@ -15,6 +15,9 @@ build/
 apps/api/generated/
 packages/database/generated/
 
+# local file uploads (dev only — swap for object storage before prod)
+apps/api/uploads/
+
 # logs
 *.log
 npm-debug.log*

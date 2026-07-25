@@ -20,6 +20,8 @@ import { DisputesModule } from './disputes/disputes.module';
 import { ConsentsModule } from './consents/consents.module';
 import { SettlementsModule } from './settlements/settlements.module';
 import { AdminModule } from './admin/admin.module';
+import { ShootCategoriesModule } from './shoot-categories/shoot-categories.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { AdminModule } from './admin/admin.module';
     ConsentsModule,
     SettlementsModule,
     AdminModule,
+    ShootCategoriesModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

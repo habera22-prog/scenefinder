@@ -94,7 +94,7 @@ export class PhotographersService {
         responseTimeAvgMin: true,
         createdAt: true,
         user: { select: { name: true } },
-        portfolios: true,
+        portfolios: { include: { category: true }, orderBy: { sortOrder: 'asc' } },
         packages: true,
       },
     });
@@ -102,6 +102,16 @@ export class PhotographersService {
       throw new NotFoundException('작가를 찾을 수 없습니다.');
     }
     return photographer;
+  }
+
+  async getByUserId(userId: string) {
+    return this.prisma.photographer.findUnique({
+      where: { userId },
+      include: {
+        portfolios: { include: { category: true }, orderBy: { sortOrder: 'asc' } },
+        packages: true,
+      },
+    });
   }
 
   search(query: SearchPhotographersQueryDto) {

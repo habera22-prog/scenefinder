@@ -30,6 +30,12 @@ export class PhotographersController {
     return this.photographersService.search(query);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMyProfile(@CurrentUser() user: AuthenticatedUser) {
+    return this.photographersService.getByUserId(user.userId);
+  }
+
   @Get(':id/verification-status')
   getVerificationStatus(@Param('id') id: string) {
     return this.photographersService.getVerificationStatus(id);

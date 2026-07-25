@@ -120,6 +120,7 @@ export class BookingsService {
         chatRoom: true,
         shootCategory: true,
         package: true,
+        deliveries: true,
       },
     });
     if (!booking) {
