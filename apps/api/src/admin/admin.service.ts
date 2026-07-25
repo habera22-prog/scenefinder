@@ -11,6 +11,64 @@ export class AdminService {
     private readonly toss: TossPaymentsClient,
   ) {}
 
+  listPhotographers(status?: 'pending' | 'verified' | 'rejected') {
+    return this.prisma.photographer.findMany({
+      where: status ? { verificationStatus: status } : undefined,
+      select: {
+        id: true,
+        businessName: true,
+        representativeName: true,
+        businessRegNo: true,
+        verificationStatus: true,
+        createdAt: true,
+        user: { select: { name: true, phone: true, email: true, status: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  listPayments(status?: 'pending' | 'completed' | 'cancelled' | 'expired' | 'failed') {
+    return this.prisma.payment.findMany({
+      where: status ? { status } : undefined,
+      select: {
+        id: true,
+        bookingId: true,
+        type: true,
+        amount: true,
+        status: true,
+        paidAt: true,
+        booking: {
+          select: {
+            customer: { select: { name: true } },
+            photographer: { select: { businessName: true } },
+          },
+        },
+      },
+      orderBy: { paidAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  listReviews(blinded?: boolean) {
+    return this.prisma.review.findMany({
+      where: blinded === undefined ? undefined : { isBlinded: blinded },
+      select: {
+        id: true,
+        bookingId: true,
+        ratingOverall: true,
+        content: true,
+        isBlinded: true,
+        booking: {
+          select: {
+            customer: { select: { name: true } },
+            photographer: { select: { businessName: true } },
+          },
+        },
+      },
+      take: 100,
+    });
+  }
+
   async approvePhotographer(photographerId: string) {
     const photographer = await this.prisma.photographer.findUnique({
       where: { id: photographerId },

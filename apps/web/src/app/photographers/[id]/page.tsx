@@ -22,6 +22,8 @@ export default function PhotographerProfilePage() {
   const [activeCategory, setActiveCategory] = useState<string | "all">("all");
 
   const [showInquiry, setShowInquiry] = useState(false);
+  const [allCategories, setAllCategories] = useState<ShootCategory[]>([]);
+  const [shootCategoryId, setShootCategoryId] = useState("");
   const [shootDatetime, setShootDatetime] = useState("");
   const [location, setLocation] = useState("");
   const [headcount, setHeadcount] = useState("1");
@@ -35,6 +37,7 @@ export default function PhotographerProfilePage() {
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "작가 정보를 불러오지 못했습니다."),
       );
+    apiFetch<ShootCategory[]>("/shoot-categories").then(setAllCategories).catch(() => {});
   }, [params.id]);
 
   const portfolioCategories = useMemo(() => {
@@ -52,19 +55,27 @@ export default function PhotographerProfilePage() {
     return profile.portfolios.filter((p) => p.categoryId === activeCategory);
   }, [profile, activeCategory]);
 
+  useEffect(() => {
+    if (shootCategoryId || allCategories.length === 0) return;
+    const preferred =
+      portfolioCategories[0]?.id ??
+      allCategories.find((c) => profile?.categories.includes(c.code))?.id ??
+      allCategories[0].id;
+    setShootCategoryId(preferred);
+  }, [allCategories, portfolioCategories, profile, shootCategoryId]);
+
   async function submitInquiry(e: React.FormEvent) {
     e.preventDefault();
     if (!profile) return;
     setInquiryError(null);
     setIsSubmitting(true);
     try {
-      const category = portfolioCategories[0] ?? null;
       const booking = await apiFetch<{ id: string }>("/bookings", {
         method: "POST",
         token,
         body: {
           photographerId: profile.id,
-          shootCategoryId: category?.id,
+          shootCategoryId,
           shootDatetime: new Date(shootDatetime).toISOString(),
           location,
           headcount: Number(headcount),
@@ -205,6 +216,22 @@ export default function PhotographerProfilePage() {
           <Card className="p-6">
             <h3 className="mb-4 font-semibold text-foreground">촬영 문의하기</h3>
             <form className="flex flex-col gap-4" onSubmit={submitInquiry}>
+              <div>
+                <Label htmlFor="shootCategoryId">촬영 종류</Label>
+                <select
+                  id="shootCategoryId"
+                  required
+                  value={shootCategoryId}
+                  onChange={(e) => setShootCategoryId(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-card p-2 text-sm focus:border-brand focus:outline-none"
+                >
+                  {allCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <Label htmlFor="shootDatetime">촬영 희망 일시</Label>
                 <Input

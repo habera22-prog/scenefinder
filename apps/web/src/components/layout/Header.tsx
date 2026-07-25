@@ -46,6 +46,14 @@ export function Header() {
                   정산
                 </Link>
               )}
+              {user.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                >
+                  관리자
+                </Link>
+              )}
               <span className="hidden text-sm text-muted-foreground sm:inline">
                 {user.name}님
               </span>

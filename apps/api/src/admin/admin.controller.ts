@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -14,6 +14,28 @@ export class AdminController {
   @Get('dashboard')
   dashboard() {
     return this.adminService.getDashboard();
+  }
+
+  @Get('photographers')
+  listPhotographers(
+    @Query('status') status?: 'pending' | 'verified' | 'rejected',
+  ) {
+    return this.adminService.listPhotographers(status);
+  }
+
+  @Get('payments')
+  listPayments(
+    @Query('status')
+    status?: 'pending' | 'completed' | 'cancelled' | 'expired' | 'failed',
+  ) {
+    return this.adminService.listPayments(status);
+  }
+
+  @Get('reviews')
+  listReviews(@Query('blinded') blinded?: string) {
+    return this.adminService.listReviews(
+      blinded === undefined ? undefined : blinded === 'true',
+    );
   }
 
   @Post('photographers/:id/approve')

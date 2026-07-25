@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
+import { ReviewForm } from "@/components/reviews/ReviewForm";
+import { CancelBookingAction } from "@/components/bookings/CancelBookingAction";
+
+const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
 
 const STATUS_LABEL: Record<string, string> = {
   inquiry: "문의 접수",
@@ -351,7 +355,7 @@ export default function BookingRoomPage() {
             <p className="text-sm text-muted-foreground">고객의 납품 확인을 기다리고 있어요.</p>
           )}
 
-          {booking.status === "closed" && (
+          {booking.status === "closed" && user?.role !== "customer" && (
             <p className="text-sm text-muted-foreground">
               거래가 종료되었습니다. 이용해주셔서 감사합니다.
             </p>
@@ -362,7 +366,20 @@ export default function BookingRoomPage() {
           {booking.status === "disputed" && (
             <p className="text-sm text-muted-foreground">분쟁 처리 중인 예약입니다.</p>
           )}
+
+          {CANCELLABLE_STATUSES.includes(booking.status) && user && (
+            <CancelBookingAction
+              bookingId={booking.id}
+              token={token}
+              initiatedBy={user.role === "photographer" ? "photographer" : "customer"}
+              onCancelled={loadBooking}
+            />
+          )}
         </Card>
+
+        {booking.status === "closed" && user?.role === "customer" && (
+          <ReviewForm bookingId={booking.id} token={token} />
+        )}
       </div>
     </div>
   );

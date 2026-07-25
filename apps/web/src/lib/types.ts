@@ -176,3 +176,48 @@ export interface Payment {
   status: "pending" | "completed" | "cancelled" | "expired" | "failed";
   paidAt: string | null;
 }
+
+export interface AdminDashboard {
+  newCustomersThisWeek: number;
+  newPhotographersThisWeek: number;
+  pendingInquiries: number;
+  activeDisputes: number;
+  scheduledSettlementTotal: number;
+  monthlyGrossRevenue: number;
+  monthlyPlatformRevenue: number;
+}
+
+export interface AdminPhotographer {
+  id: string;
+  businessName: string;
+  representativeName: string;
+  businessRegNo: string;
+  verificationStatus: "pending" | "verified" | "rejected";
+  createdAt: string;
+  user: { name: string; phone: string | null; email: string; status: string };
+}
+
+export interface AdminPayment {
+  id: string;
+  bookingId: string;
+  type: "deposit" | "balance" | "refund";
+  amount: number;
+  status: string;
+  paidAt: string | null;
+  booking: {
+    customer: { name: string };
+    photographer: { businessName: string };
+  };
+}
+
+export interface AdminReview {
+  id: string;
+  bookingId: string;
+  ratingOverall: number;
+  content: string | null;
+  isBlinded: boolean;
+  booking: {
+    customer: { name: string };
+    photographer: { businessName: string };
+  };
+}
