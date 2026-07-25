@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# build outputs
+.next/
+dist/
+build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+apps/api/generated/
+packages/database/generated/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# turbo
+.turbo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+
+# claude code local settings
+.claude/settings.local.json

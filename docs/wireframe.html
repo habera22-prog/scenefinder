@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>씬파인더 SceneFinder — 와이어프레임 v0.1</title>
+<style>
+  :root{
+    --line:#8a8a8a;
+    --line-strong:#333;
+    --bg:#fafafa;
+    --panel:#fff;
+    --accent:#666;
+    --note:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    background:var(--bg); color:#222;
+  }
+  header{
+    padding:20px 24px; border-bottom:2px solid var(--line-strong);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  }
+  header h1{font-size:16px; margin:0; letter-spacing:.02em;}
+  header .sub{font-size:12px; color:#777; margin-top:2px;}
+  nav{display:flex; gap:6px; flex-wrap:wrap; padding:12px 24px; border-bottom:1px solid #ddd; background:#f0f0f0;}
+  nav button{
+    font-size:12px; padding:7px 12px; border:1px solid var(--line); background:#fff;
+    cursor:pointer; border-radius:3px; color:#333;
+  }
+  nav button.active{background:var(--line-strong); color:#fff; border-color:var(--line-strong);}
+  main{padding:28px 24px 60px; max-width:1000px; margin:0 auto;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .frame{
+    border:2px solid var(--line-strong); background:var(--panel); border-radius:4px;
+    padding:0; overflow:hidden;
+  }
+  .frame-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+    background:var(--line-strong); padding:8px 14px;
+  }
+  .frame-body{padding:20px;}
+  .box{border:1.5px dashed var(--line); border-radius:3px; padding:12px; margin-bottom:10px; font-size:13px; background:#fdfdfd;}
+  .box-label{font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px;}
+  .btn{
+    display:inline-block; border:1.5px solid var(--line-strong); border-radius:3px;
+    padding:8px 16px; font-size:13px; background:#fff; text-align:center; cursor:default;
+  }
+  .btn.primary{background:var(--line-strong); color:#fff;}
+  .row{display:flex; gap:12px; flex-wrap:wrap;}
+  .col{flex:1; min-width:160px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .pill{display:inline-block; font-size:11px; border:1px solid var(--line); border-radius:20px; padding:3px 10px; margin:2px;}
+  .avatar{width:44px; height:44px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:10px; color:#999;}
+  .imgph{background:repeating-linear-gradient(45deg,#eee,#eee 8px,#f5f5f5 8px,#f5f5f5 16px); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:#999; font-size:11px;}
+  .note{font-size:11px; color:var(--note); margin-top:10px; padding-top:8px; border-top:1px dashed #eee;}
+  .chatbubble{max-width:70%; padding:8px 12px; border-radius:10px; font-size:12px; margin-bottom:6px; border:1px solid var(--line);}
+  .chatbubble.me{margin-left:auto; background:#eee;}
+  .chatbubble.other{background:#fff;}
+  .steps{display:flex; gap:4px; margin-bottom:16px;}
+  .step{flex:1; height:4px; background:#ddd; border-radius:2px;}
+  .step.done{background:var(--line-strong);}
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th,td{border:1px solid #ddd; padding:6px 8px; text-align:left;}
+  th{background:#f2f2f2;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>씬파인더 (SceneFinder) — 와이어프레임</h1>
+    <div class="sub">v0.1 · 저해상도 화면설계 (레이아웃·정보구조 확인용, 실제 비주얼 디자인 아님)</div>
+  </div>
+</header>
+
+<nav id="tabs"></nav>
+<main id="screens"></main>
+
+<script>
+const screens = [
+  {id:'nav', label:'① 촬영 네비게이터', build: buildNav},
+  {id:'result', label:'② 작가 추천 결과', build: buildResult},
+  {id:'profile', label:'③ 작가 프로필', build: buildProfile},
+  {id:'room', label:'④ 예약 소통방', build: buildRoom},
+  {id:'pay', label:'⑤ 결제 화면', build: buildPay},
+  {id:'settle', label:'⑥ 작가 정산 대시보드', build: buildSettle},
+];
+
+const tabsEl = document.getElementById('tabs');
+const screensEl = document.getElementById('screens');
+
+screens.forEach((s,i)=>{
+  const btn = document.createElement('button');
+  btn.textContent = s.label;
+  btn.onclick = ()=> select(i);
+  tabsEl.appendChild(btn);
+
+  const div = document.createElement('div');
+  div.className='screen';
+  div.id='screen-'+s.id;
+  div.innerHTML = s.build();
+  screensEl.appendChild(div);
+});
+
+function select(i){
+  [...tabsEl.children].forEach((b,idx)=>b.classList.toggle('active', idx===i));
+  [...screensEl.children].forEach((d,idx)=>d.classList.toggle('active', idx===i));
+}
+select(0);
+
+function buildNav(){
+  return `
+  <div class="frame">
+    <div class="frame-title">고객 · 촬영 네비게이터 — STEP 2/5 (세부 상황 선택)</div>
+    <div class="frame-body">
+      <div class="steps">
+        <div class="step done"></div><div class="step done"></div><div class="step"></div><div class="step"></div><div class="step"></div>
+      </div>
+      <div class="box">
+        <div class="box-label">질문</div>
+        "행사 촬영"을 선택하셨네요. 어떤 상황인가요?
+      </div>
+      <div class="grid3">
+        ${['기업 포럼','세미나','시상식','공연','체육행사','교회·학교·단체행사','보도자료 촬영'].map(t=>`<div class="btn">${t}</div>`).join('')}
+      </div>
+      <div class="row" style="margin-top:20px;">
+        <div class="btn">← 이전</div>
+        <div class="btn primary" style="margin-left:auto;">다음 →</div>
+      </div>
+      <div class="note">※ 선택형 UI (버튼/칩) 중심, 텍스트 입력 최소화 — 이탈률 낮추는 것이 목적</div>
+    </div>
+  </div>`;
+}
+
+function buildResult(){
+  return `
+  <div class="frame">
+    <div class="frame-title">고객 · 작가 추천 결과</div>
+    <div class="frame-body">
+      <div class="box">
+        <div class="box-label">입력 조건 요약</div>
+        기업 포럼 · 2026.09.12 · 서울 강남 · 2시간 · 예산 50만원 이하 · 전문적이고 정돈된 분위기
+        <span class="btn" style="float:right; padding:4px 10px; font-size:11px;">조건 수정</span>
+      </div>
+      ${[1,2,3].map(n=>`
+      <div class="row box" style="align-items:center;">
+        <div class="imgph" style="width:64px; height:64px;">portfolio</div>
+        <div class="col">
+          <b>작가 ${n}</b> · 서울/경기 · 후기 4.9(128)
+          <div><span class="pill">기업행사 전문</span><span class="pill">당일 사진 제공</span></div>
+        </div>
+        <div class="col" style="text-align:right; flex:0 0 140px;">
+          매칭 적합도 상<br>
+          <span class="btn primary" style="margin-top:6px;">프로필 보기</span>
+        </div>
+      </div>`).join('')}
+      <div class="note">※ 정렬 기준: 최저가 아님 — 분야 적합도·포트폴리오 분위기·일정·지역·경험·후기·예산 종합 스코어</div>
+    </div>
+  </div>`;
+}
+
+function buildProfile(){
+  return `
+  <div class="frame">
+    <div class="frame-title">고객 · 작가 프로필</div>
+    <div class="frame-body">
+      <div class="row" style="align-items:center;">
+        <div class="avatar">사진</div>
+        <div class="col">
+          <b>작가명 / 상호</b> · 서울·경기 활동<br>
+          <span class="pill">기업행사</span><span class="pill">시상식</span><span class="pill">보도자료</span>
+        </div>
+      </div>
+      <div class="box" style="margin-top:14px;">
+        <div class="box-label">포트폴리오 (분야별 탭)</div>
+        <div class="row" style="margin-bottom:8px; font-size:11px;">
+          <span class="pill" style="background:#333;color:#fff;">행사</span><span class="pill">가족</span><span class="pill">커플</span><span class="pill">여행</span><span class="pill">공연·스포츠</span>
+        </div>
+        <div class="grid3">
+          ${[1,2,3,4,5,6].slice(0,6).map(()=>'<div class="imgph" style="height:70px;">photo</div>').join('')}
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="box">
+          <div class="box-label">촬영 패키지</div>
+          행사 베이직 — 2시간 / 보정 100장+<br>
+          기본가 350,000원
+          <div style="margin-top:6px;">행사 프리미엄 — 4시간 / 보정 250장+<br>기본가 650,000원</div>
+        </div>
+        <div class="box">
+          <div class="box-label">실제 예약 고객 후기</div>
+          ★4.9 (128) — 시간 준수·소통 우수<br>
+          "행사 흐름 이해도가 높았어요"
+        </div>
+      </div>
+      <div class="btn primary" style="width:100%; text-align:center; margin-top:10px;">이 작가에게 문의하기</div>
+    </div>
+  </div>`;
+}
+
+function buildRoom(){
+  return `
+  <div class="frame">
+    <div class="frame-title">예약별 전용 소통방</div>
+    <div class="frame-body">
+      <div class="row">
+        <div class="col" style="flex:1.4;">
+          <div class="box" style="min-height:220px;">
+            <div class="box-label">채팅</div>
+            <div class="chatbubble other">안녕하세요, 견적 확인했습니다 :)</div>
+            <div class="chatbubble me">네 9/12 오후 2시로 부탁드려요</div>
+            <div class="chatbubble other">[참고이미지.jpg] 이런 톤 원하시는 거 맞을까요?</div>
+            <div class="box" style="margin-top:10px; background:#fff8e1; border-style:solid;">
+              🔒 <b>중요 내용 확정</b> — 최종 촬영일·장소·금액이 확정되었습니다 (양측 동의 완료)
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="box">
+            <div class="box-label">촬영 정보</div>
+            일시: 9/12 14:00~16:00<br>장소: 강남 A홀<br>인원: 150명<br>담당자: 홍**<br>납품 예정일: 9/19
+          </div>
+          <div class="box">
+            <div class="box-label">촬영 체크리스트</div>
+            ☐ 행사장 전경 ☐ 현수막/로고<br>☐ 주요 내빈 ☐ 발표자<br>☐ 단체사진 ☐ 보도자료용
+          </div>
+          <div class="btn" style="width:100%; text-align:center;">일정 변경 요청</div>
+        </div>
+      </div>
+      <div class="note">※ 연락처는 예약금 결제 전까지 비공개 · 개인정보 포함 메시지 자동 경고</div>
+    </div>
+  </div>`;
+}
+
+function buildPay(){
+  return `
+  <div class="frame">
+    <div class="frame-title">결제 화면 (에스크로 · 통신판매중개 고지)</div>
+    <div class="frame-body">
+      <div class="grid2">
+        <div class="box">
+          <div class="box-label">촬영 서비스 제공자 (판매자)</div>
+          작가명/상호 · 대표자명<br>사업자등록번호 · 연락처/이메일<br>활동지역
+        </div>
+        <div class="box">
+          <div class="box-label">플랫폼 운영자 (통신판매중개자)</div>
+          회사명 · 사업자등록번호<br>대표자 · 고객센터/이메일<br>통신판매 신고정보
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-label">결제 금액</div>
+        <table>
+          <tr><td>총 촬영금액</td><td style="text-align:right;">500,000원</td></tr>
+          <tr><td>예약금 (30%)</td><td style="text-align:right;"><b>150,000원</b></td></tr>
+          <tr><td>잔금 (촬영 3일 전 결제)</td><td style="text-align:right;">350,000원</td></tr>
+        </table>
+      </div>
+      <div class="box" style="font-size:11px;">
+        본 촬영 서비스의 판매자 및 실제 제공자는 위에 표시된 사진작가입니다. 플랫폼은 거래를 중개하고 예약·결제·정산·고객상담 및 분쟁처리 서비스를 제공합니다.
+      </div>
+      <div class="btn primary" style="width:100%; text-align:center;">150,000원 결제하기</div>
+    </div>
+  </div>`;
+}
+
+function buildSettle(){
+  return `
+  <div class="frame">
+    <div class="frame-title">작가 · 정산 대시보드</div>
+    <div class="frame-body">
+      <div class="grid3">
+        <div class="box"><div class="box-label">이번 주 정산 예정</div><b>1,275,000원</b></div>
+        <div class="box"><div class="box-label">정산 보류 (분쟁중)</div><b>0원</b></div>
+        <div class="box"><div class="box-label">누적 정산액</div><b>8,430,000원</b></div>
+      </div>
+      <div class="box">
+        <div class="box-label">정산 내역</div>
+        <table>
+          <tr><th>예약</th><th>결제금액</th><th>수수료</th><th>보상금</th><th>정산예정액</th><th>지급일</th></tr>
+          <tr><td>기업포럼 9/12</td><td>500,000</td><td>-75,000</td><td>0</td><td>425,000</td><td>9/26</td></tr>
+          <tr><td>가족사진 9/14</td><td>350,000</td><td>-52,500</td><td>0</td><td>297,500</td><td>9/26</td></tr>
+        </table>
+      </div>
+      <div class="note">※ 신규 작가 첫 3건은 촬영완료 후 7일 유보 · 이후 주 1회 정기 정산</div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>

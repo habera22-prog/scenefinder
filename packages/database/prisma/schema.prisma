@@ -1,0 +1,492 @@
+// 씬파인더(SceneFinder) Prisma 스키마
+// 출처: DB스키마_API명세.md 2장 "테이블 정의" (v0.1)
+// 인증 방식(JWT/세션), 파일 스토리지 벤더 등 인프라 세부사항은 문서상 미확정 — 반영하지 않음
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  customer
+  photographer
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  withdrawn
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+enum BookingStatus {
+  inquiry
+  quoted
+  held
+  deposit_paid
+  confirmed
+  completed
+  delivered
+  closed
+  cancelled
+  disputed
+}
+
+enum MessageType {
+  text
+  image
+  file
+  location
+  system
+}
+
+enum PaymentType {
+  deposit
+  balance
+  refund
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  cancelled
+  expired
+  failed
+}
+
+enum CancelInitiator {
+  customer
+  photographer
+  platform
+}
+
+enum CancelFault {
+  customer
+  photographer
+  force_majeure
+}
+
+enum SettlementStatus {
+  scheduled
+  held
+  paid
+}
+
+enum RevisionRequestType {
+  skin
+  brightness_color
+  crop
+  background
+  glare
+  detail
+}
+
+enum RevisionStatus {
+  requested
+  in_progress
+  done
+}
+
+enum DisputeRaisedBy {
+  customer
+  photographer
+}
+
+enum DisputeType {
+  quality
+  noshow
+  delay
+  other
+}
+
+enum DisputeStatus {
+  open
+  fact_check_requested
+  resolved
+  escalated
+}
+
+enum ConsentType {
+  portfolio_full
+  portfolio_partial
+  portfolio_face_hidden
+  portfolio_none
+}
+
+// ─────────────────────────────────────────────
+// 2-1. users (공통 회원)
+// ─────────────────────────────────────────────
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  role            UserRole
+  name            String
+  phone           String? // 본인인증 완료 값
+  email           String     @unique
+  phoneVerifiedAt DateTime?  @map("phone_verified_at")
+  status          UserStatus @default(active)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  photographer Photographer?
+  bookings     Booking[]     @relation("CustomerBookings")
+  messages     Message[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// 2-2. photographers (작가 확장 정보)
+// ─────────────────────────────────────────────
+
+model Photographer {
+  id                      String             @id @default(uuid()) @db.Uuid
+  userId                  String             @unique @map("user_id") @db.Uuid
+  businessRegNo           String             @map("business_reg_no") // 사업자등록번호 — 필수, 미등록 시 유료상품 등록 불가
+  businessName            String             @map("business_name")
+  representativeName      String             @map("representative_name")
+  settlementAccount       String             @map("settlement_account") // 암호화 저장
+  settlementAccountHolder String             @map("settlement_account_holder") // 사업자명과 일치 검증
+  activeRegions           String[]           @map("active_regions")
+  moodTags                String[]           @map("mood_tags")
+  categories              String[]
+  verificationStatus      VerificationStatus @default(pending) @map("verification_status")
+  isNewPhotographer       Boolean            @default(true) @map("is_new_photographer") // 정산 유보 특례 대상 여부(첫 3건)
+  completedBookingsCount  Int                @default(0) @map("completed_bookings_count")
+  avgRating               Decimal?           @map("avg_rating") @db.Decimal(3, 2)
+  responseTimeAvgMin      Int?               @map("response_time_avg_min")
+  createdAt               DateTime           @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id])
+  portfolios  Portfolio[]
+  packages    Package[]
+  bookings    Booking[]    @relation("PhotographerBookings")
+  settlements Settlement[]
+
+  @@map("photographers")
+}
+
+// ─────────────────────────────────────────────
+// 2-3. shoot_categories (촬영 분야 — 확장 가능한 설정 테이블)
+// 촬영 종류(네비게이터 1단계)·포트폴리오 카테고리가 하드코딩 enum이 아닌
+// 이 테이블을 참조하도록 설계 — 신규 분야를 DB row 추가만으로 확장 가능
+// ─────────────────────────────────────────────
+
+model ShootCategory {
+  id        String  @id @default(uuid()) @db.Uuid
+  code      String  @unique // 예: 'event','family','couple','travel','sports','profile','brand','senior_tour'
+  label     String // 화면 노출용 한글명 (예: "시니어 투어")
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  portfolios Portfolio[]
+  bookings   Booking[]
+
+  @@map("shoot_categories")
+}
+
+// ─────────────────────────────────────────────
+// 2-4. portfolios
+// ─────────────────────────────────────────────
+
+model Portfolio {
+  id             String @id @default(uuid()) @db.Uuid
+  photographerId String @map("photographer_id") @db.Uuid
+  categoryId     String @map("category_id") @db.Uuid
+  imageUrl       String @map("image_url")
+  sortOrder      Int    @default(0) @map("sort_order")
+
+  photographer Photographer  @relation(fields: [photographerId], references: [id])
+  category     ShootCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("portfolios")
+}
+
+// ─────────────────────────────────────────────
+// 2-5. packages (촬영 상품)
+// ─────────────────────────────────────────────
+
+model Package {
+  id             String  @id @default(uuid()) @db.Uuid
+  photographerId String  @map("photographer_id") @db.Uuid
+  title          String // 예: "행사 베이직"
+  category       String
+  durationMin    Int     @map("duration_min")
+  basePrice      Int     @map("base_price")
+  includedPhotos Int     @map("included_photos")
+  retouchScope   String? @map("retouch_scope")
+  rawIncluded    Boolean @map("raw_included")
+  deliveryDays   Int     @map("delivery_days")
+  options        Json? // 추가옵션(시간연장/2인배치/드론 등) 가격 목록
+
+  photographer Photographer @relation(fields: [photographerId], references: [id])
+  bookings     Booking[]
+
+  @@map("packages")
+}
+
+// ─────────────────────────────────────────────
+// 2-6. bookings (예약/촬영계약)
+// ─────────────────────────────────────────────
+
+model Booking {
+  id              String        @id @default(uuid()) @db.Uuid
+  customerId      String        @map("customer_id") @db.Uuid
+  photographerId  String        @map("photographer_id") @db.Uuid
+  packageId       String?       @map("package_id") @db.Uuid // 맞춤 견적인 경우 null
+  status          BookingStatus @default(inquiry)
+  shootCategoryId String        @map("shoot_category_id") @db.Uuid // 촬영종류(행사/가족/시니어 투어 등, 확장형)
+  shootDatetime   DateTime?     @map("shoot_datetime")
+  location        String?
+  headcount       Int?
+  purpose         String?
+  requiredScenes  Json?         @map("required_scenes") // 필수 촬영 장면
+  totalAmount     Int?          @map("total_amount")
+  depositAmount   Int?          @map("deposit_amount") // 총액의 30%
+  balanceAmount   Int?          @map("balance_amount")
+  holdExpiresAt   DateTime?     @map("hold_expires_at") // 슬롯 홀드 만료(견적확정 +1시간)
+  balanceDueAt    DateTime?     @map("balance_due_at") // 촬영일 -3일
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  customer       User                  @relation("CustomerBookings", fields: [customerId], references: [id])
+  photographer   Photographer          @relation("PhotographerBookings", fields: [photographerId], references: [id])
+  package        Package?              @relation(fields: [packageId], references: [id])
+  shootCategory  ShootCategory         @relation(fields: [shootCategoryId], references: [id])
+  chatRoom       ChatRoom?
+  confirmations  BookingConfirmation[]
+  payments       Payment[]
+  cancellations  Cancellation[]
+  deliveries     Delivery[]
+  review         Review?
+  disputes       Dispute[]
+  consents       Consent[]
+  settlementItem SettlementItem?
+
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────────
+// 2-7. booking_confirmations (소통방 내 중요내용 확정 기록)
+// ─────────────────────────────────────────────
+
+model BookingConfirmation {
+  id                        String    @id @default(uuid()) @db.Uuid
+  bookingId                 String    @map("booking_id") @db.Uuid
+  field                     String // 예: shoot_datetime, location, amount, delivery_date
+  value                     String
+  confirmedByCustomerAt     DateTime? @map("confirmed_by_customer_at")
+  confirmedByPhotographerAt DateTime? @map("confirmed_by_photographer_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("booking_confirmations")
+}
+
+// ─────────────────────────────────────────────
+// 2-8. chat_rooms / messages
+// ─────────────────────────────────────────────
+
+model ChatRoom {
+  id               String  @id @default(uuid()) @db.Uuid
+  bookingId        String  @unique @map("booking_id") @db.Uuid // 예약 1건당 1개
+  contactDisclosed Boolean @default(false) @map("contact_disclosed") // 예약금 결제 후 true
+
+  booking  Booking   @relation(fields: [bookingId], references: [id])
+  messages Message[]
+
+  @@map("chat_rooms")
+}
+
+model Message {
+  id         String      @id @default(uuid()) @db.Uuid
+  chatRoomId String      @map("chat_room_id") @db.Uuid
+  senderId   String      @map("sender_id") @db.Uuid
+  type       MessageType
+  content    String
+  piiFlag    Boolean     @default(false) @map("pii_flag") // 개인정보 포함 자동감지 시 true
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id])
+  sender   User     @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────
+// 2-9. payments
+// ─────────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  bookingId       String        @map("booking_id") @db.Uuid
+  type            PaymentType
+  amount          Int
+  pgProvider      String        @default("tosspayments") @map("pg_provider")
+  pgTransactionId String?       @map("pg_transaction_id")
+  status          PaymentStatus @default(pending)
+  paidAt          DateTime?     @map("paid_at")
+  webhookPayload  Json?         @map("webhook_payload") // 원본 웹훅 저장(대사용)
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// 2-10. cancellations (취소·환불 산정 기록)
+// ─────────────────────────────────────────────
+
+model Cancellation {
+  id                  String          @id @default(uuid()) @db.Uuid
+  bookingId           String          @map("booking_id") @db.Uuid
+  initiatedBy         CancelInitiator @map("initiated_by")
+  fault               CancelFault
+  ruleApplied         String          @map("rule_applied") // 예: 'D-7이전 전액환불', '당일 10%+실비'
+  refundAmount        Int             @map("refund_amount")
+  compensationAmount  Int?            @map("compensation_amount") // 작가 귀책 시 고객 보상액(10%)
+  actualCostItems     Json?           @map("actual_cost_items") // 실비 항목(대관료 등) 및 증빙
+  createdAt           DateTime        @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("cancellations")
+}
+
+// ─────────────────────────────────────────────
+// 2-11. settlements / settlement_items
+// ─────────────────────────────────────────────
+
+model Settlement {
+  id             String           @id @default(uuid()) @db.Uuid
+  photographerId String           @map("photographer_id") @db.Uuid
+  periodStart    DateTime         @map("period_start") @db.Date // 주 단위 정산 구간
+  periodEnd      DateTime         @map("period_end") @db.Date
+  status         SettlementStatus @default(scheduled)
+  heldReason     String?          @map("held_reason") // 분쟁 진행중인 booking_id 참조
+  totalAmount    Int              @map("total_amount")
+  paidAt         DateTime?        @map("paid_at")
+
+  photographer Photographer     @relation(fields: [photographerId], references: [id])
+  items        SettlementItem[]
+
+  @@map("settlements")
+}
+
+model SettlementItem {
+  id              String @id @default(uuid()) @db.Uuid
+  settlementId    String @map("settlement_id") @db.Uuid
+  bookingId       String @unique @map("booking_id") @db.Uuid
+  grossAmount     Int    @map("gross_amount") // 고객 결제금액
+  platformFee     Int    @map("platform_fee") // 15~20%
+  pgFee           Int    @map("pg_fee")
+  deductionAmount Int    @default(0) @map("deduction_amount") // 작가 귀책 환불·보상·차지백 상계액
+  netAmount       Int    @map("net_amount") // 최종 지급액
+
+  settlement Settlement @relation(fields: [settlementId], references: [id])
+  booking    Booking    @relation(fields: [bookingId], references: [id])
+
+  @@map("settlement_items")
+}
+
+// ─────────────────────────────────────────────
+// 2-12. deliveries / revision_requests
+// ─────────────────────────────────────────────
+
+model Delivery {
+  id                      String    @id @default(uuid()) @db.Uuid
+  bookingId               String    @map("booking_id") @db.Uuid
+  photoUrls               Json      @map("photo_urls") // 클라우드 스토리지 경로
+  representativePhotoUrls Json?     @map("representative_photo_urls")
+  deliveredAt             DateTime? @map("delivered_at")
+  downloadExpiresAt       DateTime? @map("download_expires_at") // 납품 +30일
+  customerConfirmedAt     DateTime? @map("customer_confirmed_at") // 미확인 시 +7일 자동확인
+
+  booking          Booking            @relation(fields: [bookingId], references: [id])
+  revisionRequests RevisionRequest[]
+
+  @@map("deliveries")
+}
+
+model RevisionRequest {
+  id          String              @id @default(uuid()) @db.Uuid
+  deliveryId  String              @map("delivery_id") @db.Uuid
+  photoRef    String              @map("photo_ref") // 사진 번호
+  requestType RevisionRequestType @map("request_type")
+  description String?
+  status      RevisionStatus      @default(requested)
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@map("revision_requests")
+}
+
+// ─────────────────────────────────────────────
+// 2-13. reviews
+// ─────────────────────────────────────────────
+
+model Review {
+  id                  String  @id @default(uuid()) @db.Uuid
+  bookingId           String  @unique @map("booking_id") @db.Uuid // 결제·촬영 완료 건만 작성 가능
+  ratingOverall       Int     @map("rating_overall")
+  ratingKindness      Int     @map("rating_kindness")
+  ratingPunctual      Int     @map("rating_punctual")
+  ratingCommunication Int     @map("rating_communication")
+  ratingSpeed         Int     @map("rating_speed")
+  willReuse           Boolean @map("will_reuse")
+  category            String? // 표시용(행사/아이/외국인/여행동행)
+  content             String?
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────
+// 2-14. disputes
+// ─────────────────────────────────────────────
+
+model Dispute {
+  id                        String          @id @default(uuid()) @db.Uuid
+  bookingId                 String          @map("booking_id") @db.Uuid
+  raisedBy                  DisputeRaisedBy @map("raised_by")
+  type                      DisputeType
+  status                    DisputeStatus   @default(open)
+  photographerResponseDueAt DateTime?       @map("photographer_response_due_at") // 요청 접수 +24시간
+  resolution                String?
+  resolvedAt                DateTime?       @map("resolved_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("disputes")
+}
+
+// ─────────────────────────────────────────────
+// 2-15. consents (초상권/미성년자 동의)
+// ─────────────────────────────────────────────
+
+model Consent {
+  id                String      @id @default(uuid()) @db.Uuid
+  bookingId         String      @map("booking_id") @db.Uuid
+  type              ConsentType
+  minorIncluded     Boolean     @default(false) @map("minor_included")
+  guardianConsentAt DateTime?   @map("guardian_consent_at") // 미성년 포함 시 필수
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("consents")
+}
