@@ -151,6 +151,29 @@ export class DeliveriesService {
     });
   }
 
+  listForCustomer(customerId: string) {
+    return this.prisma.delivery.findMany({
+      where: { booking: { customerId } },
+      orderBy: { deliveredAt: 'desc' },
+      select: {
+        id: true,
+        bookingId: true,
+        representativePhotoUrls: true,
+        photoUrls: true,
+        deliveredAt: true,
+        downloadExpiresAt: true,
+        customerConfirmedAt: true,
+        booking: {
+          select: {
+            location: true,
+            shootDatetime: true,
+            photographer: { select: { businessName: true } },
+          },
+        },
+      },
+    });
+  }
+
   private async getBookingForPhotographer(bookingId: string, userId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },

@@ -5,12 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/asset";
 import { useAuth } from "@/lib/auth-context";
-import type { PhotographerProfile, ShootCategory } from "@/lib/types";
+import type { FavoriteItem, PhotographerProfile, ShootCategory } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
+import { FavoriteButton } from "@/components/photographers/FavoriteButton";
 
 export default function PhotographerProfilePage() {
   const params = useParams<{ id: string }>();
@@ -30,6 +31,8 @@ export default function PhotographerProfilePage() {
   const [purpose, setPurpose] = useState("");
   const [inquiryError, setInquiryError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     apiFetch<PhotographerProfile>(`/photographers/${params.id}`)
@@ -39,6 +42,41 @@ export default function PhotographerProfilePage() {
       );
     apiFetch<ShootCategory[]>("/shoot-categories").then(setAllCategories).catch(() => {});
   }, [params.id]);
+
+  useEffect(() => {
+    if (!user || user.role !== "customer") return;
+    apiFetch<FavoriteItem[]>("/customers/me/favorites", { token })
+      .then((favorites) =>
+        setIsFavorited(favorites.some((f) => f.photographer.id === params.id)),
+      )
+      .catch(() => {});
+  }, [user, token, params.id]);
+
+  async function toggleFavorite(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setFavoriteBusy(true);
+    try {
+      if (isFavorited) {
+        await apiFetch(`/favorites/${params.id}`, { method: "DELETE", token });
+        setIsFavorited(false);
+      } else {
+        await apiFetch("/favorites", {
+          method: "POST",
+          token,
+          body: { photographerId: params.id },
+        });
+        setIsFavorited(true);
+      }
+    } catch {
+      // 낙관적 갱신 실패 시 조용히 무시 — 다음 방문 시 서버 상태로 재동기화
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
 
   const portfolioCategories = useMemo(() => {
     if (!profile) return [];
@@ -110,8 +148,13 @@ export default function PhotographerProfilePage() {
           사진
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-foreground">
             {profile.businessName}
+            <FavoriteButton
+              isFavorited={isFavorited}
+              isBusy={favoriteBusy}
+              onToggle={toggleFavorite}
+            />
           </h1>
           <p className="text-sm text-muted-foreground">
             {profile.activeRegions.join(", ")} 활동

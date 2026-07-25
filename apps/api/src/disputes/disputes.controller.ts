@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -20,6 +20,14 @@ export class DisputesController {
     @Body() dto: CreateDisputeDto,
   ) {
     return this.disputesService.create(bookingId, user.userId, dto);
+  }
+
+  @Get('bookings/:bookingId/disputes')
+  listForBooking(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.disputesService.listForBooking(bookingId, user.userId);
   }
 
   @UseGuards(RolesGuard)

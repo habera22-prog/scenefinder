@@ -168,6 +168,45 @@ export interface SettlementItem {
   netAmount: number;
 }
 
+export interface ReceivedDelivery {
+  id: string;
+  bookingId: string;
+  representativePhotoUrls: string[] | null;
+  photoUrls: string[];
+  deliveredAt: string | null;
+  downloadExpiresAt: string | null;
+  customerConfirmedAt: string | null;
+  booking: {
+    location: string | null;
+    shootDatetime: string | null;
+    photographer: { businessName: string };
+  };
+}
+
+export interface FavoriteItem {
+  id: string;
+  createdAt: string;
+  photographer: PhotographerSummary;
+}
+
+export type DisputeType = "quality" | "noshow" | "delay" | "other";
+export type DisputeStatus =
+  | "open"
+  | "fact_check_requested"
+  | "resolved"
+  | "escalated";
+
+export interface Dispute {
+  id: string;
+  bookingId: string;
+  raisedBy: "customer" | "photographer";
+  type: DisputeType;
+  status: DisputeStatus;
+  photographerResponseDueAt: string | null;
+  resolution: string | null;
+  resolvedAt: string | null;
+}
+
 export interface Payment {
   id: string;
   bookingId: string;

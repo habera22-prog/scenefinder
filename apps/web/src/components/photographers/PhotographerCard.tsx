@@ -2,8 +2,17 @@ import Link from "next/link";
 import type { PhotographerSummary } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { FavoriteButton } from "@/components/photographers/FavoriteButton";
 
-export function PhotographerCard({ photographer }: { photographer: PhotographerSummary }) {
+export function PhotographerCard({
+  photographer,
+  isFavorited,
+  onToggleFavorite,
+}: {
+  photographer: PhotographerSummary;
+  isFavorited?: boolean;
+  onToggleFavorite?: (e: React.MouseEvent) => void;
+}) {
   return (
     <Link href={`/photographers/${photographer.id}`}>
       <Card className="flex items-center gap-4 p-4 transition-shadow hover:shadow-md">
@@ -19,6 +28,13 @@ export function PhotographerCard({ photographer }: { photographer: PhotographerS
               <span className="shrink-0 text-sm text-muted-foreground">
                 ★ {photographer.avgRating.toFixed(1)}
               </span>
+            )}
+            {onToggleFavorite && (
+              <FavoriteButton
+                isFavorited={isFavorited ?? false}
+                onToggle={onToggleFavorite}
+                className="ml-auto"
+              />
             )}
           </div>
           <p className="truncate text-sm text-muted-foreground">

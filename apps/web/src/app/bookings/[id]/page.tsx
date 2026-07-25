@@ -12,8 +12,17 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { CancelBookingAction } from "@/components/bookings/CancelBookingAction";
+import { DisputeAction } from "@/components/disputes/DisputeAction";
 
 const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
+const DISPUTABLE_STATUSES = [
+  "deposit_paid",
+  "confirmed",
+  "completed",
+  "delivered",
+  "closed",
+  "disputed",
+];
 
 const STATUS_LABEL: Record<string, string> = {
   inquiry: "문의 접수",
@@ -379,6 +388,10 @@ export default function BookingRoomPage() {
 
         {booking.status === "closed" && user?.role === "customer" && (
           <ReviewForm bookingId={booking.id} token={token} />
+        )}
+
+        {DISPUTABLE_STATUSES.includes(booking.status) && user && (
+          <DisputeAction bookingId={booking.id} token={token} onReported={loadBooking} />
         )}
       </div>
     </div>

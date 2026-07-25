@@ -37,6 +37,20 @@ export class DisputesService {
     return dispute;
   }
 
+  async listForBooking(bookingId: string, userId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+    if (!booking) {
+      throw new NotFoundException('예약을 찾을 수 없습니다.');
+    }
+    await this.resolveSide(booking, userId);
+
+    return this.prisma.dispute.findMany({
+      where: { bookingId },
+    });
+  }
+
   async requestFactCheck(disputeId: string) {
     const dispute = await this.prisma.dispute.findUnique({
       where: { id: disputeId },

@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { PhotographerSummary, ShootCategory } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
+import type { FavoriteItem, PhotographerSummary, ShootCategory } from "@/lib/types";
 import { PhotographerCard } from "@/components/photographers/PhotographerCard";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
@@ -13,6 +14,7 @@ function ResultsList() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") ?? "";
   const region = searchParams.get("region") ?? "";
+  const { user, token } = useAuth();
 
   const [categories, setCategories] = useState<ShootCategory[]>([]);
   const [regionInput, setRegionInput] = useState(region);
@@ -20,10 +22,46 @@ function ResultsList() {
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== "customer") return;
+    apiFetch<FavoriteItem[]>("/customers/me/favorites", { token })
+      .then((favorites) => setFavoriteIds(new Set(favorites.map((f) => f.photographer.id))))
+      .catch(() => {});
+  }, [user, token]);
+
+  async function toggleFavorite(photographerId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const isFavorited = favoriteIds.has(photographerId);
+    try {
+      if (isFavorited) {
+        await apiFetch(`/favorites/${photographerId}`, { method: "DELETE", token });
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(photographerId);
+          return next;
+        });
+      } else {
+        await apiFetch("/favorites", {
+          method: "POST",
+          token,
+          body: { photographerId },
+        });
+        setFavoriteIds((prev) => new Set(prev).add(photographerId));
+      }
+    } catch {
+      // 낙관적 갱신 실패 시 조용히 무시
+    }
+  }
 
   useEffect(() => {
     setPhotographers(null);
@@ -99,7 +137,12 @@ function ResultsList() {
           </p>
         )}
         {photographers?.map((p) => (
-          <PhotographerCard key={p.id} photographer={p} />
+          <PhotographerCard
+            key={p.id}
+            photographer={p}
+            isFavorited={favoriteIds.has(p.id)}
+            onToggleFavorite={(e) => toggleFavorite(p.id, e)}
+          />
         ))}
       </div>
     </div>

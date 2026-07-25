@@ -22,6 +22,8 @@ import { SettlementsModule } from './settlements/settlements.module';
 import { AdminModule } from './admin/admin.module';
 import { ShootCategoriesModule } from './shoot-categories/shoot-categories.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { PagesModule } from './pages/pages.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { UploadsModule } from './uploads/uploads.module';
     AdminModule,
     ShootCategoriesModule,
     UploadsModule,
+    FavoritesModule,
+    PagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

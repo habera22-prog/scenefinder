@@ -87,6 +87,9 @@ const screens = [
   {id:'room', label:'④ 예약 소통방', build: buildRoom},
   {id:'pay', label:'⑤ 결제 화면', build: buildPay},
   {id:'settle', label:'⑥ 작가 정산 대시보드', build: buildSettle},
+  {id:'dispute', label:'⑦ 분쟁 신고', build: buildDispute},
+  {id:'mypage', label:'⑧ 마이페이지(받은사진·찜)', build: buildMypage},
+  {id:'static', label:'⑨ 정적/법적 페이지', build: buildStatic},
 ];
 
 const tabsEl = document.getElementById('tabs');
@@ -285,6 +288,111 @@ function buildSettle(){
         </table>
       </div>
       <div class="note">※ 신규 작가 첫 3건은 촬영완료 후 7일 유보 · 이후 주 1회 정기 정산</div>
+    </div>
+  </div>`;
+}
+
+function buildDispute(){
+  return `
+  <div class="frame">
+    <div class="frame-title">분쟁(Dispute) 제기 — 취소 화면과 별개, 촬영 이후 문제 신고</div>
+    <div class="frame-body">
+      <div class="box">
+        <div class="box-label">1. 대상 예약 선택</div>
+        기업포럼 9/12 · 작가명 · 350,000원 <span class="pill">촬영완료</span>
+      </div>
+      <div class="box">
+        <div class="box-label">2. 신고 유형</div>
+        <div class="row">
+          <div class="btn">사진 품질 문제</div>
+          <div class="btn">노쇼·지각</div>
+          <div class="btn">납품 지연</div>
+          <div class="btn">계약조건 미이행</div>
+          <div class="btn">기타</div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-label">3. 상세 내용 + 증빙 첨부</div>
+        [텍스트 입력창] · [사진/스크린샷 첨부] · [소통방 대화 자동 첨부 — 별도 업로드 불필요]
+      </div>
+      <div class="btn primary" style="width:100%; text-align:center;">분쟁 접수하기</div>
+
+      <div class="box" style="margin-top:16px; background:#fafafa;">
+        <div class="box-label">4. 진행 상태 (접수 후 노출)</div>
+        <div class="row" style="align-items:center; font-size:12px;">
+          <span class="pill" style="background:#333;color:#fff;">① 접수완료</span>
+          <span class="pill">② 작가 사실확인 요청 (24h 내 응답)</span>
+          <span class="pill">③ 관리자 조정</span>
+          <span class="pill">④ 해결(환불/보상/재촬영)</span>
+        </div>
+        <div style="font-size:11px; color:#777; margin-top:6px;">해당 예약 건 정산은 분쟁 해결 전까지 자동 보류됩니다.</div>
+      </div>
+      <div class="note">※ "취소 요청"(촬영 전, 일정 변경/환불)과 "분쟁 신고"(촬영 후, 결과물·이행 문제)는 진입점을 분리 — 소통방과 예약 상세 화면 양쪽에 각각 버튼 배치</div>
+    </div>
+  </div>`;
+}
+
+function buildMypage(){
+  return `
+  <div class="frame">
+    <div class="frame-title">고객 마이페이지 — 받은 사진 / 찜한 작가</div>
+    <div class="frame-body">
+      <div class="row" style="margin-bottom:14px; font-size:12px;">
+        <span class="pill">내 촬영</span><span class="pill">메시지</span><span class="pill">결제</span>
+        <span class="pill" style="background:#333;color:#fff;">받은 사진</span><span class="pill">찜한 작가</span>
+      </div>
+      <div class="box">
+        <div class="box-label">받은 사진 — 예약 건별 갤러리 모음</div>
+        <div class="grid3">
+          ${[1,2].map(()=>`
+          <div class="box" style="text-align:center;">
+            <div class="imgph" style="height:70px; margin-bottom:6px;">대표사진</div>
+            기업포럼 9/12<br>
+            <span style="font-size:11px; color:#777;">다운로드 만료 D-23</span><br>
+            <span class="btn" style="margin-top:6px; font-size:11px; padding:5px 10px;">갤러리 열기</span>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-label">찜한 작가</div>
+        <div class="row">
+          ${[1,2,3].map(n=>`
+          <div class="col box" style="text-align:center;">
+            <div class="avatar" style="margin:0 auto 6px;">사진</div>
+            작가 ${n}<br><span style="font-size:11px; color:#777;">기업행사 전문</span>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="note">※ 찜하기는 작가 프로필/추천결과 화면에 하트 아이콘으로 추가 — 결과 화면 정렬에는 영향 없음(비교용 저장 기능일 뿐)</div>
+    </div>
+  </div>`;
+}
+
+function buildStatic(){
+  return `
+  <div class="frame">
+    <div class="frame-title">정적/법적 페이지 (푸터 공통 레이아웃)</div>
+    <div class="frame-body">
+      <div class="row">
+        <div class="col" style="flex:0 0 180px;">
+          <div class="box">
+            <div class="box-label">메뉴</div>
+            이용방법<br>회사소개<br><b>서비스 이용약관</b><br>작가 이용약관<br>개인정보처리방침<br>취소·환불 정책<br>통신판매중개자 고지<br>고객센터·FAQ
+          </div>
+        </div>
+        <div class="col" style="flex:2;">
+          <div class="box" style="min-height:160px;">
+            <div class="box-label">본문 — 서비스 이용약관 예시</div>
+            제1장 총칙 / 제2장 회원가입 / 제3장 통신판매중개자 지위 / …
+            <div style="margin-top:8px; font-size:11px; color:#777;">※ 이용약관_초안.md 내용을 그대로 렌더링 (Markdown → HTML)</div>
+          </div>
+        </div>
+      </div>
+      <div class="box" style="font-size:11px; background:#fff8e1;">
+        <b>통신판매중개자 고지 (전 페이지 하단 고정 노출)</b><br>
+        본 플랫폼은 고객과 사진작가 사이의 촬영 서비스 거래를 연결하는 통신판매중개 서비스입니다. 판매자 및 실제 제공자는 각 상품 페이지에 표시된 사진작가입니다.
+      </div>
+      <div class="note">※ 회사소개·이용방법은 마케팅용 랜딩, 나머지는 법적 문서 — 라우팅만 있으면 되는 정적 페이지라 프론트 개발 우선순위는 낮지만 오픈 전 반드시 필요</div>
     </div>
   </div>`;
 }

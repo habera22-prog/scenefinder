@@ -243,6 +243,16 @@ erDiagram
 | minor_included | boolean | |
 | guardian_consent_at | timestamp nullable | 미성년 포함 시 필수 |
 
+### 2-16. `favorites` (찜한 작가)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | uuid PK | |
+| customer_id | uuid FK → users.id | |
+| photographer_id | uuid FK | |
+| created_at | timestamp | |
+
+unique(customer_id, photographer_id)
+
 ---
 
 ## 3. API 명세 (MVP)
@@ -316,6 +326,7 @@ erDiagram
 | POST | /api/deliveries/{id}/confirm | 고객 납품 확인 |
 | POST | /api/deliveries/{id}/revision-requests | 수정 요청 |
 | PATCH | /api/revision-requests/{id} | 상태 갱신 |
+| GET | /api/customers/me/deliveries | **마이페이지 "받은 사진"** — 내 예약 전체의 납품 갤러리 목록(대표사진, 만료일 포함) |
 
 ### 3-9. 후기
 | Method | Endpoint | 설명 |
@@ -326,20 +337,32 @@ erDiagram
 ### 3-10. 분쟁/고객센터
 | Method | Endpoint | 설명 |
 |---|---|---|
-| POST | /api/bookings/{id}/disputes | 분쟁 접수 → 해당 booking 정산 보류 |
+| POST | /api/bookings/{id}/disputes | **분쟁 신고 화면에서 호출** — 유형·상세내용·증빙 첨부, 접수 시 해당 booking 정산 자동 보류 |
+| GET | /api/bookings/{id}/disputes | 해당 예약의 분쟁 진행 상태 조회(접수→사실확인요청→조정→해결) |
 | POST | /api/disputes/{id}/fact-check-request | 작가에게 사실확인 요청(24h SLA) |
 | POST | /api/disputes/{id}/resolve | 관리자 조정 결과 반영 |
 | POST | /api/support/tickets | 일반 문의 |
 | POST | /api/support/emergency | 긴급 문의(전날/당일) |
 
-### 3-11. 정산 (작가)
+### 3-11. 찜하기
+| Method | Endpoint | 설명 |
+|---|---|---|
+| POST | /api/favorites | { photographer_id } — 프로필/추천결과 화면 하트 아이콘에서 호출 |
+| DELETE | /api/favorites/{photographer_id} | |
+| GET | /api/customers/me/favorites | 마이페이지 "찜한 작가" 목록 |
+
+### 3-12. 정적/법적 페이지
+| Method | Endpoint | 설명 |
+|---|---|---|
+| GET | /api/pages/{slug} | slug: how-to-use, about, terms-of-service, photographer-terms, privacy-policy, cancellation-policy, intermediary-notice — CMS 없이 마크다운 렌더링으로 시작 가능 |
+### 3-13. 정산 (작가)
 | Method | Endpoint | 설명 |
 |---|---|---|
 | GET | /api/photographers/{id}/settlements | 정산 내역 |
 | GET | /api/photographers/{id}/settlements/{sid}/items | 건별 상세(수수료/보상금/차감 내역) |
 | POST | /api/admin/settlements/run-weekly | 배치: 주 1회 정산 실행 |
 
-### 3-12. 관리자
+### 3-14. 관리자
 | Method | Endpoint | 설명 |
 |---|---|---|
 | GET | /api/admin/dashboard | 신규 고객/작가, 대기, 지연, 분쟁 등 요약 |

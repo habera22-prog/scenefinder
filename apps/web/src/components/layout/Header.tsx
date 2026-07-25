@@ -24,6 +24,12 @@ export function Header() {
             <Link href="/signup?role=photographer" className="hover:text-foreground">
               작가 지원
             </Link>
+            <Link href="/pages/how-to-use" className="hover:text-foreground">
+              이용방법
+            </Link>
+            <Link href="/pages/about" className="hover:text-foreground">
+              회사소개
+            </Link>
           </nav>
         </div>
 
@@ -31,12 +37,26 @@ export function Header() {
           {isLoading ? null : user ? (
             <>
               {user.role === "customer" && (
-                <Link
-                  href="/me/bookings"
-                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
-                >
-                  내 예약
-                </Link>
+                <>
+                  <Link
+                    href="/me/bookings"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    내 예약
+                  </Link>
+                  <Link
+                    href="/me/photos"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    받은 사진
+                  </Link>
+                  <Link
+                    href="/me/favorites"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    찜한 작가
+                  </Link>
+                </>
               )}
               {user.role === "photographer" && (
                 <Link
