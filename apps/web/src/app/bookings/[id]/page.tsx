@@ -15,9 +15,18 @@ import { CancelBookingAction } from "@/components/bookings/CancelBookingAction";
 import { RescheduleAction } from "@/components/bookings/RescheduleAction";
 import { PaymentDisclosure } from "@/components/bookings/PaymentDisclosure";
 import { DisputeAction } from "@/components/disputes/DisputeAction";
+import { ContractView } from "@/components/bookings/ContractView";
 
 const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
 const RESCHEDULABLE_STATUSES = ["held", "deposit_paid", "confirmed"];
+const CONTRACT_VISIBLE_STATUSES = [
+  "held",
+  "deposit_paid",
+  "confirmed",
+  "completed",
+  "delivered",
+  "closed",
+];
 const DISPUTABLE_STATUSES = [
   "deposit_paid",
   "confirmed",
@@ -436,6 +445,14 @@ export default function BookingRoomPage() {
 
         {DISPUTABLE_STATUSES.includes(booking.status) && user && (
           <DisputeAction bookingId={booking.id} token={token} onReported={loadBooking} />
+        )}
+
+        {CONTRACT_VISIBLE_STATUSES.includes(booking.status) && user && (
+          <ContractView
+            bookingId={booking.id}
+            token={token}
+            side={user.role === "photographer" ? "photographer" : "customer"}
+          />
         )}
       </div>
     </div>

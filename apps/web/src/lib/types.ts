@@ -413,3 +413,12 @@ export interface AdminReview {
     photographer: { businessName: string };
   };
 }
+
+export interface AppContract {
+  id: string;
+  bookingId: string;
+  content: string;
+  customerSignedAt: string | null;
+  photographerSignedAt: string | null;
+  createdAt: string;
+}

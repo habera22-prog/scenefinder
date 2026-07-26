@@ -26,6 +26,7 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { PagesModule } from './pages/pages.module';
 import { SupportModule } from './support/support.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     PagesModule,
     SupportModule,
     NotificationsModule,
+    ContractsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
