@@ -336,6 +336,16 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string;
+  role: UserRole;
+  status: "active" | "suspended" | "withdrawn";
+  createdAt: string;
+}
+
 export interface AdminDashboard {
   newCustomersThisWeek: number;
   newPhotographersThisWeek: number;

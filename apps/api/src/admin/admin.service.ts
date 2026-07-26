@@ -10,7 +10,9 @@ import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { UserRole, UserStatus } from '@scenefinder/database';
 
 @Injectable()
 export class AdminService {
@@ -237,6 +239,51 @@ export class AdminService {
       throw new NotFoundException('예약을 찾을 수 없습니다.');
     }
     return booking;
+  }
+
+  listUsers(role?: UserRole, status?: UserStatus) {
+    return this.prisma.user.findMany({
+      where: {
+        ...(role ? { role } : {}),
+        ...(status ? { status } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  async updateUser(userId: string, dto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: dto,
+    });
+  }
+
+  async setUserStatus(userId: string, status: 'active' | 'suspended') {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+    if (user.role === 'admin') {
+      throw new BadRequestException('관리자 계정은 상태를 변경할 수 없습니다.');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status },
+    });
   }
 
   async approvePhotographer(photographerId: string) {

@@ -12,11 +12,12 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import type { BookingStatus } from '@scenefinder/database';
+import type { BookingStatus, UserRole, UserStatus } from '@scenefinder/database';
 import { AdminService } from './admin.service';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -128,5 +129,28 @@ export class AdminController {
   @Get('bookings/:id')
   getBookingDetail(@Param('id') id: string) {
     return this.adminService.getBookingDetail(id);
+  }
+
+  @Get('users')
+  listUsers(
+    @Query('role') role?: UserRole,
+    @Query('status') status?: UserStatus,
+  ) {
+    return this.adminService.listUsers(role, status);
+  }
+
+  @Patch('users/:id')
+  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.adminService.updateUser(id, dto);
+  }
+
+  @Post('users/:id/suspend')
+  suspendUser(@Param('id') id: string) {
+    return this.adminService.setUserStatus(id, 'suspended');
+  }
+
+  @Post('users/:id/activate')
+  activateUser(@Param('id') id: string) {
+    return this.adminService.setUserStatus(id, 'active');
   }
 }
