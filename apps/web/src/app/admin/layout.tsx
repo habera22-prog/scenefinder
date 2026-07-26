@@ -43,16 +43,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6">
-      <h1 className="mb-6 text-xl font-bold text-foreground">관리자</h1>
-      <div className="mb-8 flex gap-1 border-b border-border text-sm font-medium">
+      <h1 className="mb-1 text-xl font-bold text-foreground">관리자</h1>
+      <p className="mb-4 text-sm text-muted-foreground">
+        작가 승인, 결제, 후기, 분쟁, 카테고리 등 플랫폼 운영 전반을 관리해요.
+      </p>
+      <div className="mb-8 flex flex-wrap gap-1.5 border-b-2 border-border pb-0 text-sm font-semibold">
         {TABS.map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`-mb-px border-b-2 px-3 py-2 ${
+            className={`-mb-0.5 whitespace-nowrap rounded-t-lg border-b-2 px-3 py-2 transition-colors ${
               pathname === tab.href
-                ? "border-brand text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "border-brand bg-brand-muted text-brand"
+                : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {tab.label}
