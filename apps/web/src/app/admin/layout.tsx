@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 
 const TABS = [
   { href: "/admin", label: "대시보드" },
+  { href: "/admin/bookings", label: "예약 조회" },
   { href: "/admin/photographers", label: "작가 승인" },
   { href: "/admin/payments", label: "결제/환불" },
   { href: "/admin/reviews", label: "후기 관리" },

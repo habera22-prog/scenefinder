@@ -268,6 +268,52 @@ export interface AdminSupportTicket extends SupportTicket {
   user: { name: string; phone: string | null; role: UserRole };
 }
 
+export interface AdminBookingListItem {
+  id: string;
+  status: BookingStatus;
+  shootDatetime: string | null;
+  location: string | null;
+  totalAmount: number | null;
+  createdAt: string;
+  customer: { name: string; phone: string | null };
+  photographer: { businessName: string };
+}
+
+export interface AdminBookingDetail extends Omit<Booking, "customer" | "photographer"> {
+  customer: { name: string; phone: string | null; email: string };
+  photographer: {
+    businessName: string;
+    representativeName: string;
+    businessRegNo: string;
+  };
+  payments: Payment[];
+  cancellations: {
+    id: string;
+    initiatedBy: string;
+    fault: string;
+    ruleApplied: string;
+    refundAmount: number;
+    compensationAmount: number | null;
+    createdAt: string;
+  }[];
+  disputes: {
+    id: string;
+    raisedBy: string;
+    type: string;
+    status: string;
+    resolution: string | null;
+  }[];
+  review: {
+    ratingOverall: number;
+    content: string | null;
+  } | null;
+  chatRoom: {
+    id: string;
+    contactDisclosed: boolean;
+    messages: { id: string; senderId: string; content: string; createdAt: string }[];
+  } | null;
+}
+
 export interface AdminDashboard {
   newCustomersThisWeek: number;
   newPhotographersThisWeek: number;

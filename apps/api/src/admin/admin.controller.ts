@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import type { BookingStatus } from '@scenefinder/database';
 import { AdminService } from './admin.service';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
@@ -114,5 +115,18 @@ export class AdminController {
   @Delete('packages/:id')
   deletePackage(@Param('id') id: string) {
     return this.adminService.deletePackage(id);
+  }
+
+  @Get('bookings')
+  listBookings(
+    @Query('status') status?: BookingStatus,
+    @Query('photographerId') photographerId?: string,
+  ) {
+    return this.adminService.listBookings(status, photographerId);
+  }
+
+  @Get('bookings/:id')
+  getBookingDetail(@Param('id') id: string) {
+    return this.adminService.getBookingDetail(id);
   }
 }

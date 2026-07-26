@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@scenefinder/database';
+import type { BookingStatus, Prisma } from '@scenefinder/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
@@ -180,6 +180,53 @@ export class AdminService {
     }
     await this.prisma.package.delete({ where: { id: packageId } });
     return { id: packageId, deleted: true };
+  }
+
+  listBookings(status?: BookingStatus, photographerId?: string) {
+    return this.prisma.booking.findMany({
+      where: {
+        ...(status ? { status } : {}),
+        ...(photographerId ? { photographerId } : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        shootDatetime: true,
+        location: true,
+        totalAmount: true,
+        createdAt: true,
+        customer: { select: { name: true, phone: true } },
+        photographer: { select: { businessName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  async getBookingDetail(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        customer: { select: { name: true, phone: true, email: true } },
+        photographer: {
+          select: { businessName: true, representativeName: true, businessRegNo: true },
+        },
+        shootCategory: true,
+        package: true,
+        confirmations: true,
+        payments: true,
+        cancellations: true,
+        disputes: true,
+        deliveries: true,
+        rescheduleRequests: { orderBy: { createdAt: 'desc' } },
+        review: true,
+        chatRoom: { include: { messages: { orderBy: { createdAt: 'asc' } } } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException('예약을 찾을 수 없습니다.');
+    }
+    return booking;
   }
 
   async approvePhotographer(photographerId: string) {
