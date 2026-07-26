@@ -124,6 +124,14 @@ export class BookingsService {
         package: true,
         deliveries: true,
         rescheduleRequests: { orderBy: { createdAt: 'desc' } },
+        photographer: {
+          select: {
+            businessName: true,
+            representativeName: true,
+            businessRegNo: true,
+            activeRegions: true,
+          },
+        },
       },
     });
     if (!booking) {

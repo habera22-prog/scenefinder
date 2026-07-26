@@ -112,6 +112,12 @@ export interface Booking {
   chatRoom?: { id: string; contactDisclosed: boolean } | null;
   deliveries?: Delivery[];
   rescheduleRequests?: RescheduleRequest[];
+  photographer?: {
+    businessName: string;
+    representativeName: string;
+    businessRegNo: string;
+    activeRegions: string[];
+  };
 }
 
 export type RescheduleRequestedBy = "customer" | "photographer";

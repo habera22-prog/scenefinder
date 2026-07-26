@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { CancelBookingAction } from "@/components/bookings/CancelBookingAction";
 import { RescheduleAction } from "@/components/bookings/RescheduleAction";
+import { PaymentDisclosure } from "@/components/bookings/PaymentDisclosure";
 import { DisputeAction } from "@/components/disputes/DisputeAction";
 
 const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
@@ -322,17 +323,43 @@ export default function BookingRoomPage() {
             </div>
           )}
 
-          {booking.status === "held" && user?.role === "customer" && (
-            <Button disabled={isBusy} onClick={payDeposit} className="w-full">
-              {isBusy ? "처리 중..." : `예약금 ${booking.depositAmount?.toLocaleString()}원 결제하기`}
-            </Button>
-          )}
+          {booking.status === "held" &&
+            user?.role === "customer" &&
+            booking.photographer &&
+            booking.totalAmount !== null && (
+              <>
+                <PaymentDisclosure
+                  photographer={booking.photographer}
+                  totalAmount={booking.totalAmount}
+                  payingLabel="예약금 (30%)"
+                  payingAmount={booking.depositAmount ?? 0}
+                />
+                <Button disabled={isBusy} onClick={payDeposit} className="w-full">
+                  {isBusy
+                    ? "처리 중..."
+                    : `예약금 ${booking.depositAmount?.toLocaleString()}원 결제하기`}
+                </Button>
+              </>
+            )}
 
-          {booking.status === "deposit_paid" && user?.role === "customer" && (
-            <Button disabled={isBusy} onClick={payBalance} className="w-full">
-              {isBusy ? "처리 중..." : `잔금 ${booking.balanceAmount?.toLocaleString()}원 결제하기`}
-            </Button>
-          )}
+          {booking.status === "deposit_paid" &&
+            user?.role === "customer" &&
+            booking.photographer &&
+            booking.totalAmount !== null && (
+              <>
+                <PaymentDisclosure
+                  photographer={booking.photographer}
+                  totalAmount={booking.totalAmount}
+                  payingLabel="잔금"
+                  payingAmount={booking.balanceAmount ?? 0}
+                />
+                <Button disabled={isBusy} onClick={payBalance} className="w-full">
+                  {isBusy
+                    ? "처리 중..."
+                    : `잔금 ${booking.balanceAmount?.toLocaleString()}원 결제하기`}
+                </Button>
+              </>
+            )}
 
           {booking.status === "confirmed" && user?.role === "photographer" && (
             <Button disabled={isBusy} onClick={markComplete} className="w-full">
