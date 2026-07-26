@@ -1,9 +1,21 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminService } from './admin.service';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
+import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
+import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -74,5 +86,33 @@ export class AdminController {
   @Post('reviews/:id/blind')
   blind(@Param('id') id: string) {
     return this.adminService.blindReview(id);
+  }
+
+  @Get('shoot-categories')
+  listShootCategories() {
+    return this.adminService.listAllShootCategories();
+  }
+
+  @Post('shoot-categories')
+  createShootCategory(@Body() dto: CreateShootCategoryDto) {
+    return this.adminService.createShootCategory(dto);
+  }
+
+  @Patch('shoot-categories/:id')
+  updateShootCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateShootCategoryDto,
+  ) {
+    return this.adminService.updateShootCategory(id, dto);
+  }
+
+  @Delete('portfolios/:id')
+  deletePortfolio(@Param('id') id: string) {
+    return this.adminService.deletePortfolio(id);
+  }
+
+  @Delete('packages/:id')
+  deletePackage(@Param('id') id: string) {
+    return this.adminService.deletePackage(id);
   }
 }

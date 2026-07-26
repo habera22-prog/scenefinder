@@ -7,6 +7,8 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { CreateConfirmationDto } from './dto/create-confirmation.dto';
+import { CreateRescheduleRequestDto } from './dto/create-reschedule-request.dto';
+import { RespondRescheduleDto } from './dto/respond-reschedule.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('bookings')
@@ -58,5 +60,23 @@ export class BookingsController {
     @Body() dto: CreateConfirmationDto,
   ) {
     return this.bookingsService.addConfirmation(id, user.userId, dto);
+  }
+
+  @Post(':id/reschedule-request')
+  requestReschedule(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateRescheduleRequestDto,
+  ) {
+    return this.bookingsService.requestReschedule(id, user.userId, dto);
+  }
+
+  @Post(':id/reschedule-response')
+  respondReschedule(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RespondRescheduleDto,
+  ) {
+    return this.bookingsService.respondReschedule(id, user.userId, dto);
   }
 }

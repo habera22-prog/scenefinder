@@ -1,8 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@scenefinder/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
+import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
+import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 
 @Injectable()
 export class AdminService {
@@ -112,6 +119,67 @@ export class AdminService {
       where: { id: ticketId },
       data: { adminResponse: response, status: 'answered', respondedAt: new Date() },
     });
+  }
+
+  listAllShootCategories() {
+    return this.prisma.shootCategory.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async createShootCategory(dto: CreateShootCategoryDto) {
+    const existing = await this.prisma.shootCategory.findUnique({
+      where: { code: dto.code },
+    });
+    if (existing) {
+      throw new ConflictException('이미 존재하는 code입니다.');
+    }
+    return this.prisma.shootCategory.create({
+      data: {
+        code: dto.code,
+        label: dto.label,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+  }
+
+  async updateShootCategory(id: string, dto: UpdateShootCategoryDto) {
+    const category = await this.prisma.shootCategory.findUnique({ where: { id } });
+    if (!category) {
+      throw new NotFoundException('카테고리를 찾을 수 없습니다.');
+    }
+    return this.prisma.shootCategory.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deletePortfolio(portfolioId: string) {
+    const portfolio = await this.prisma.portfolio.findUnique({
+      where: { id: portfolioId },
+    });
+    if (!portfolio) {
+      throw new NotFoundException('포트폴리오를 찾을 수 없습니다.');
+    }
+    await this.prisma.portfolio.delete({ where: { id: portfolioId } });
+    return { id: portfolioId, deleted: true };
+  }
+
+  async deletePackage(packageId: string) {
+    const pkg = await this.prisma.package.findUnique({ where: { id: packageId } });
+    if (!pkg) {
+      throw new NotFoundException('촬영 상품을 찾을 수 없습니다.');
+    }
+    const bookingCount = await this.prisma.booking.count({
+      where: { packageId },
+    });
+    if (bookingCount > 0) {
+      throw new BadRequestException(
+        '이미 예약에 사용된 상품은 삭제할 수 없습니다. 비활성화가 필요하면 작가에게 안내해주세요.',
+      );
+    }
+    await this.prisma.package.delete({ where: { id: packageId } });
+    return { id: packageId, deleted: true };
   }
 
   async approvePhotographer(photographerId: string) {

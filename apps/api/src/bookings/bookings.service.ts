@@ -10,6 +10,8 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { CreateConfirmationDto } from './dto/create-confirmation.dto';
+import { CreateRescheduleRequestDto } from './dto/create-reschedule-request.dto';
+import { RespondRescheduleDto } from './dto/respond-reschedule.dto';
 
 const HOLD_DURATION_MS = 60 * 60 * 1000; // 견적확정 +1시간
 const DEPOSIT_RATE = 0.3;
@@ -121,6 +123,7 @@ export class BookingsService {
         shootCategory: true,
         package: true,
         deliveries: true,
+        rescheduleRequests: { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!booking) {
@@ -191,6 +194,98 @@ export class BookingsService {
               confirmedByPhotographerAt: new Date(),
             },
     });
+  }
+
+  async requestReschedule(
+    bookingId: string,
+    userId: string,
+    dto: CreateRescheduleRequestDto,
+  ) {
+    const booking = await this.findOrThrow(bookingId);
+    const side = await this.resolveSide(booking, userId);
+
+    if (!dto.newShootDatetime && !dto.newLocation) {
+      throw new BadRequestException(
+        '변경할 일시 또는 장소 중 하나는 입력해야 합니다.',
+      );
+    }
+
+    const pending = await this.prisma.rescheduleRequest.findFirst({
+      where: { bookingId, status: 'pending' },
+    });
+    if (pending) {
+      throw new BadRequestException(
+        '이미 응답을 기다리고 있는 일정 변경 요청이 있습니다.',
+      );
+    }
+
+    return this.prisma.rescheduleRequest.create({
+      data: {
+        bookingId,
+        requestedBy: side,
+        newShootDatetime: dto.newShootDatetime
+          ? new Date(dto.newShootDatetime)
+          : undefined,
+        newLocation: dto.newLocation,
+        reason: dto.reason,
+      },
+    });
+  }
+
+  async respondReschedule(
+    bookingId: string,
+    userId: string,
+    dto: RespondRescheduleDto,
+  ) {
+    const booking = await this.findOrThrow(bookingId);
+    const side = await this.resolveSide(booking, userId);
+
+    const pending = await this.prisma.rescheduleRequest.findFirst({
+      where: { bookingId, status: 'pending' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!pending) {
+      throw new NotFoundException('응답 대기중인 일정 변경 요청이 없습니다.');
+    }
+    if (pending.requestedBy === side) {
+      throw new ForbiddenException(
+        '요청을 보낸 당사자는 스스로 응답할 수 없습니다.',
+      );
+    }
+
+    if (!dto.approve) {
+      return this.prisma.rescheduleRequest.update({
+        where: { id: pending.id },
+        data: { status: 'rejected', respondedAt: new Date() },
+      });
+    }
+
+    const updated = await this.prisma.rescheduleRequest.update({
+      where: { id: pending.id },
+      data: { status: 'approved', respondedAt: new Date() },
+    });
+
+    const bookingUpdate: Prisma.BookingUpdateInput = {};
+    if (pending.newShootDatetime) {
+      bookingUpdate.shootDatetime = pending.newShootDatetime;
+      if (booking.balanceDueAt) {
+        bookingUpdate.balanceDueAt = new Date(
+          pending.newShootDatetime.getTime() -
+            BALANCE_DUE_DAYS_BEFORE * 24 * 60 * 60 * 1000,
+        );
+      }
+    }
+    if (pending.newLocation) {
+      bookingUpdate.location = pending.newLocation;
+    }
+    if (Object.keys(bookingUpdate).length > 0) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: bookingUpdate,
+      });
+    }
+
+    return updated;
   }
 
   private async findOrThrow(bookingId: string) {

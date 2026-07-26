@@ -13,6 +13,8 @@ const TABS = [
   { href: "/admin/reviews", label: "후기 관리" },
   { href: "/admin/disputes", label: "분쟁 처리" },
   { href: "/admin/support", label: "고객센터" },
+  { href: "/admin/categories", label: "카테고리 관리" },
+  { href: "/admin/content", label: "콘텐츠 검수" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

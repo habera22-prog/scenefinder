@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { CancelBookingAction } from "@/components/bookings/CancelBookingAction";
+import { RescheduleAction } from "@/components/bookings/RescheduleAction";
 import { DisputeAction } from "@/components/disputes/DisputeAction";
 
 const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
+const RESCHEDULABLE_STATUSES = ["held", "deposit_paid", "confirmed"];
 const DISPUTABLE_STATUSES = [
   "deposit_paid",
   "confirmed",
@@ -374,6 +376,18 @@ export default function BookingRoomPage() {
           )}
           {booking.status === "disputed" && (
             <p className="text-sm text-muted-foreground">분쟁 처리 중인 예약입니다.</p>
+          )}
+
+          {RESCHEDULABLE_STATUSES.includes(booking.status) && user && (
+            <RescheduleAction
+              bookingId={booking.id}
+              token={token}
+              side={user.role === "photographer" ? "photographer" : "customer"}
+              pending={
+                booking.rescheduleRequests?.find((r) => r.status === "pending") ?? null
+              }
+              onDone={loadBooking}
+            />
           )}
 
           {CANCELLABLE_STATUSES.includes(booking.status) && user && (

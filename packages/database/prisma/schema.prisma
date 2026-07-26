@@ -146,6 +146,17 @@ enum SupportTicketStatus {
   closed
 }
 
+enum RescheduleRequestedBy {
+  customer
+  photographer
+}
+
+enum RescheduleStatus {
+  pending
+  approved
+  rejected
+}
+
 // ─────────────────────────────────────────────
 // 2-1. users (공통 회원)
 // ─────────────────────────────────────────────
@@ -316,6 +327,7 @@ model Booking {
   consents       Consent[]
   settlementItem SettlementItem?
   supportTickets SupportTicket[]
+  rescheduleRequests RescheduleRequest[]
 
   @@map("bookings")
 }
@@ -552,4 +564,24 @@ model SupportTicket {
   booking Booking? @relation(fields: [bookingId], references: [id])
 
   @@map("support_tickets")
+}
+
+// ─────────────────────────────────────────────
+// 2-17. reschedule_requests (일정 변경 요청/응답)
+// ─────────────────────────────────────────────
+
+model RescheduleRequest {
+  id               String                @id @default(uuid()) @db.Uuid
+  bookingId        String                 @map("booking_id") @db.Uuid
+  requestedBy      RescheduleRequestedBy  @map("requested_by")
+  newShootDatetime DateTime?              @map("new_shoot_datetime")
+  newLocation      String?                @map("new_location")
+  reason           String?
+  status           RescheduleStatus       @default(pending)
+  respondedAt      DateTime?              @map("responded_at")
+  createdAt        DateTime               @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("reschedule_requests")
 }

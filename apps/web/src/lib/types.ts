@@ -111,6 +111,22 @@ export interface Booking {
   shootCategory?: ShootCategory;
   chatRoom?: { id: string; contactDisclosed: boolean } | null;
   deliveries?: Delivery[];
+  rescheduleRequests?: RescheduleRequest[];
+}
+
+export type RescheduleRequestedBy = "customer" | "photographer";
+export type RescheduleStatus = "pending" | "approved" | "rejected";
+
+export interface RescheduleRequest {
+  id: string;
+  bookingId: string;
+  requestedBy: RescheduleRequestedBy;
+  newShootDatetime: string | null;
+  newLocation: string | null;
+  reason: string | null;
+  status: RescheduleStatus;
+  respondedAt: string | null;
+  createdAt: string;
 }
 
 export interface Delivery {
