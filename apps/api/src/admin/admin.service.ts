@@ -11,6 +11,7 @@ import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { UserRole, UserStatus } from '@scenefinder/database';
 
@@ -239,6 +240,24 @@ export class AdminService {
       throw new NotFoundException('예약을 찾을 수 없습니다.');
     }
     return booking;
+  }
+
+  async updateBooking(bookingId: string, dto: UpdateBookingDto) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+    if (!booking) {
+      throw new NotFoundException('예약을 찾을 수 없습니다.');
+    }
+    return this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        ...(dto.shootDatetime ? { shootDatetime: new Date(dto.shootDatetime) } : {}),
+        ...(dto.location ? { location: dto.location } : {}),
+        ...(dto.headcount ? { headcount: dto.headcount } : {}),
+        ...(dto.purpose ? { purpose: dto.purpose } : {}),
+      },
+    });
   }
 
   listUsers(role?: UserRole, status?: UserStatus) {

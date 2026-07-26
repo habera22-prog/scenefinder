@@ -18,6 +18,7 @@ import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -129,6 +130,11 @@ export class AdminController {
   @Get('bookings/:id')
   getBookingDetail(@Param('id') id: string) {
     return this.adminService.getBookingDetail(id);
+  }
+
+  @Patch('bookings/:id')
+  updateBooking(@Param('id') id: string, @Body() dto: UpdateBookingDto) {
+    return this.adminService.updateBooking(id, dto);
   }
 
   @Get('users')
