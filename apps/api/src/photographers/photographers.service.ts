@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyPhotographerDto } from './dto/apply-photographer.dto';
 import { SearchPhotographersQueryDto } from './dto/search-photographers-query.dto';
+import { AddAvailabilityDto } from './dto/add-availability.dto';
 
 const BUSINESS_REG_NO_PATTERN = /^\d{10}$/;
 
@@ -112,6 +113,63 @@ export class PhotographersService {
         packages: true,
       },
     });
+  }
+
+  async listUnavailableDates(photographerId: string) {
+    const photographer = await this.prisma.photographer.findUnique({
+      where: { id: photographerId },
+    });
+    if (!photographer) {
+      throw new NotFoundException('작가를 찾을 수 없습니다.');
+    }
+    return this.prisma.photographerAvailability.findMany({
+      where: { photographerId, date: { gte: new Date() } },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  async addUnavailableDate(userId: string, dto: AddAvailabilityDto) {
+    const photographer = await this.prisma.photographer.findUnique({
+      where: { userId },
+    });
+    if (!photographer) {
+      throw new NotFoundException('작가 프로필을 먼저 등록해주세요.');
+    }
+    const existing = await this.prisma.photographerAvailability.findUnique({
+      where: {
+        photographerId_date: {
+          photographerId: photographer.id,
+          date: new Date(dto.date),
+        },
+      },
+    });
+    if (existing) {
+      throw new ConflictException('이미 등록된 휴무일입니다.');
+    }
+    return this.prisma.photographerAvailability.create({
+      data: {
+        photographerId: photographer.id,
+        date: new Date(dto.date),
+        reason: dto.reason,
+      },
+    });
+  }
+
+  async removeUnavailableDate(userId: string, dateId: string) {
+    const record = await this.prisma.photographerAvailability.findUnique({
+      where: { id: dateId },
+    });
+    if (!record) {
+      throw new NotFoundException('휴무일 정보를 찾을 수 없습니다.');
+    }
+    const photographer = await this.prisma.photographer.findUnique({
+      where: { id: record.photographerId },
+    });
+    if (photographer?.userId !== userId) {
+      throw new ForbiddenException('본인 휴무일만 삭제할 수 있습니다.');
+    }
+    await this.prisma.photographerAvailability.delete({ where: { id: dateId } });
+    return { id: dateId, deleted: true };
   }
 
   search(query: SearchPhotographersQueryDto) {

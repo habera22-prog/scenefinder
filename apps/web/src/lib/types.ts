@@ -346,6 +346,14 @@ export interface AdminUser {
   createdAt: string;
 }
 
+export interface PhotographerUnavailableDate {
+  id: string;
+  photographerId: string;
+  date: string;
+  reason: string | null;
+  createdAt: string;
+}
+
 export interface AdminDashboard {
   newCustomersThisWeek: number;
   newPhotographersThisWeek: number;

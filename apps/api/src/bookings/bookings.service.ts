@@ -18,6 +18,14 @@ const HOLD_DURATION_MS = 60 * 60 * 1000; // 견적확정 +1시간
 const DEPOSIT_RATE = 0.3;
 const BALANCE_DUE_DAYS_BEFORE = 3;
 
+// 휴무일 비교는 한국 시간 기준 날짜로 — UTC 변환 시 날짜가 하루 밀리는 것을 방지
+function kstDateOnly(date: Date): Date {
+  const kstDateString = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+  }).format(date);
+  return new Date(kstDateString);
+}
+
 type BasicBooking = { customerId: string; photographerId: string };
 
 @Injectable()
@@ -33,6 +41,21 @@ export class BookingsService {
     });
     if (!photographer) {
       throw new NotFoundException('작가를 찾을 수 없습니다.');
+    }
+
+    const shootDate = new Date(dto.shootDatetime);
+    const blocked = await this.prisma.photographerAvailability.findUnique({
+      where: {
+        photographerId_date: {
+          photographerId: dto.photographerId,
+          date: kstDateOnly(shootDate),
+        },
+      },
+    });
+    if (blocked) {
+      throw new BadRequestException(
+        '작가가 해당 날짜에는 촬영이 불가능해요(휴무일). 다른 날짜를 선택해주세요.',
+      );
     }
 
     const booking = await this.prisma.booking.create({

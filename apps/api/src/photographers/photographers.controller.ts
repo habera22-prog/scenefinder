@@ -1,10 +1,20 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
 import { PhotographersService } from './photographers.service';
 import { ApplyPhotographerDto } from './dto/apply-photographer.dto';
 import { SearchPhotographersQueryDto } from './dto/search-photographers-query.dto';
+import { AddAvailabilityDto } from './dto/add-availability.dto';
 
 @Controller('photographers')
 export class PhotographersController {
@@ -36,9 +46,32 @@ export class PhotographersController {
     return this.photographersService.getByUserId(user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('me/availability')
+  addUnavailableDate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: AddAvailabilityDto,
+  ) {
+    return this.photographersService.addUnavailableDate(user.userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('me/availability/:dateId')
+  removeUnavailableDate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('dateId') dateId: string,
+  ) {
+    return this.photographersService.removeUnavailableDate(user.userId, dateId);
+  }
+
   @Get(':id/verification-status')
   getVerificationStatus(@Param('id') id: string) {
     return this.photographersService.getVerificationStatus(id);
+  }
+
+  @Get(':id/availability')
+  listUnavailableDates(@Param('id') id: string) {
+    return this.photographersService.listUnavailableDates(id);
   }
 
   @Get(':id')

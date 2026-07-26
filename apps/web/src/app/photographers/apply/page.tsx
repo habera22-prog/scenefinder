@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { PortfolioManager } from "@/components/photographers/PortfolioManager";
 import { PackageManager } from "@/components/photographers/PackageManager";
+import { AvailabilityManager } from "@/components/photographers/AvailabilityManager";
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: "심사 대기 중",
@@ -264,6 +265,7 @@ export default function PhotographerApplyPage() {
           packages={profile.packages}
           onChange={(packages) => setProfile({ ...profile, packages })}
         />
+        <AvailabilityManager photographerId={profile.id} token={token} />
       </div>
     </div>
   );

@@ -220,11 +220,29 @@ model Photographer {
   user        User         @relation(fields: [userId], references: [id])
   portfolios  Portfolio[]
   packages    Package[]
-  bookings    Booking[]    @relation("PhotographerBookings")
-  settlements Settlement[]
-  favorites   Favorite[]
+  bookings      Booking[]                   @relation("PhotographerBookings")
+  settlements   Settlement[]
+  favorites     Favorite[]
+  unavailableDates PhotographerAvailability[]
 
   @@map("photographers")
+}
+
+// ─────────────────────────────────────────────
+// 2-15-1. photographer_availability (작가 휴무일)
+// ─────────────────────────────────────────────
+
+model PhotographerAvailability {
+  id             String   @id @default(uuid()) @db.Uuid
+  photographerId String   @map("photographer_id") @db.Uuid
+  date           DateTime @db.Date
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  photographer Photographer @relation(fields: [photographerId], references: [id])
+
+  @@unique([photographerId, date])
+  @@map("photographer_availability")
 }
 
 // ─────────────────────────────────────────────
