@@ -234,6 +234,62 @@ export class AdminService {
     });
   }
 
+  async exportPaymentsCsv(from?: string, to?: string) {
+    const paidAt: { gte?: Date; lte?: Date } = {};
+    if (from) paidAt.gte = new Date(`${from}T00:00:00+09:00`);
+    if (to) paidAt.lte = new Date(`${to}T23:59:59+09:00`);
+
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: 'completed',
+        ...(from || to ? { paidAt } : {}),
+      },
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        pgProvider: true,
+        paidAt: true,
+        booking: {
+          select: {
+            id: true,
+            customer: { select: { name: true } },
+            photographer: { select: { businessName: true } },
+          },
+        },
+      },
+      orderBy: { paidAt: 'asc' },
+    });
+
+    const header = [
+      '결제ID',
+      '예약ID',
+      '고객명',
+      '작가상호',
+      '결제유형',
+      '금액',
+      'PG사',
+      '결제일시',
+    ];
+    const rows = payments.map((p) => [
+      p.id,
+      p.booking.id,
+      p.booking.customer.name,
+      p.booking.photographer.businessName,
+      p.type,
+      String(p.amount),
+      p.pgProvider,
+      p.paidAt ? p.paidAt.toISOString() : '',
+    ]);
+
+    const escapeCsv = (value: string) =>
+      /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+    return [header, ...rows]
+      .map((row) => row.map(escapeCsv).join(','))
+      .join('\n');
+  }
+
   listBookings(status?: BookingStatus, photographerId?: string) {
     return this.prisma.booking.findMany({
       where: {

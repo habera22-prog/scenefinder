@@ -7,8 +7,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -174,5 +176,18 @@ export class AdminController {
   @Post('coupons/:id/deactivate')
   deactivateCoupon(@Param('id') id: string) {
     return this.adminService.deactivateCoupon(id);
+  }
+
+  @Get('stats/export')
+  async exportStats(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Res() res: Response,
+  ) {
+    const csv = await this.adminService.exportPaymentsCsv(from, to);
+    const filename = `payments_${from ?? 'all'}_${to ?? 'all'}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('﻿' + csv);
   }
 }

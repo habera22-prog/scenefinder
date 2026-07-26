@@ -49,6 +49,41 @@ export async function apiFetch<T>(
   return data as T;
 }
 
+export async function downloadFile(
+  path: string,
+  token: string | null,
+  filenameFallback: string,
+): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(
+      response.status,
+      (data && typeof data === "object" && "message" in data
+        ? String((data as { message: unknown }).message)
+        : undefined) ?? "다운로드에 실패했습니다.",
+      data,
+    );
+  }
+
+  const disposition = response.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  const filename = match?.[1] ?? filenameFallback;
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function uploadFile(
   file: File,
   token: string | null,
