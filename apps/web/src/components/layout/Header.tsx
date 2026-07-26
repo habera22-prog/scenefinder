@@ -59,12 +59,26 @@ export function Header() {
                 </>
               )}
               {user.role === "photographer" && (
-                <Link
-                  href="/me/settlements"
-                  className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
-                >
-                  정산
-                </Link>
+                <>
+                  <Link
+                    href="/me/bookings"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    예약 관리
+                  </Link>
+                  <Link
+                    href="/photographers/apply"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    포트폴리오
+                  </Link>
+                  <Link
+                    href="/me/settlements"
+                    className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
+                  >
+                    정산
+                  </Link>
+                </>
               )}
               {user.role === "admin" && (
                 <Link

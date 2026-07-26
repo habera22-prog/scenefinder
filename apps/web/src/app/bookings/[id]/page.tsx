@@ -230,8 +230,11 @@ export default function BookingRoomPage() {
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder="메시지를 입력하세요"
+              className="min-w-0 flex-1"
             />
-            <Button type="submit">전송</Button>
+            <Button type="submit" className="shrink-0">
+              전송
+            </Button>
           </form>
         </Card>
       </div>
