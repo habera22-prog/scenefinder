@@ -16,6 +16,7 @@ import { RescheduleAction } from "@/components/bookings/RescheduleAction";
 import { PaymentDisclosure } from "@/components/bookings/PaymentDisclosure";
 import { DisputeAction } from "@/components/disputes/DisputeAction";
 import { ContractView } from "@/components/bookings/ContractView";
+import { CouponApply } from "@/components/bookings/CouponApply";
 
 const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
 const RESCHEDULABLE_STATUSES = ["held", "deposit_paid", "confirmed"];
@@ -319,9 +320,13 @@ export default function BookingRoomPage() {
           {booking.status === "quoted" && (
             <div className="flex flex-col gap-2 text-sm">
               <p>
-                예약금 {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
+                총액 {booking.totalAmount?.toLocaleString()}원 · 예약금{" "}
+                {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
                 {booking.balanceAmount?.toLocaleString()}원
               </p>
+              {user?.role === "customer" && (
+                <CouponApply booking={booking} token={token} onDone={loadBooking} />
+              )}
               {user?.role === "customer" ? (
                 <Button disabled={isBusy} onClick={acceptQuote}>
                   견적 수락하기

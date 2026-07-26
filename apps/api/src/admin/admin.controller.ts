@@ -19,6 +19,7 @@ import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { CreateCouponDto } from './dto/create-coupon.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -158,5 +159,20 @@ export class AdminController {
   @Post('users/:id/activate')
   activateUser(@Param('id') id: string) {
     return this.adminService.setUserStatus(id, 'active');
+  }
+
+  @Get('coupons')
+  listCoupons() {
+    return this.adminService.listCoupons();
+  }
+
+  @Post('coupons')
+  createCoupon(@Body() dto: CreateCouponDto) {
+    return this.adminService.createCoupon(dto);
+  }
+
+  @Post('coupons/:id/deactivate')
+  deactivateCoupon(@Param('id') id: string) {
+    return this.adminService.deactivateCoupon(id);
   }
 }

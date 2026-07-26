@@ -27,6 +27,7 @@ import { PagesModule } from './pages/pages.module';
 import { SupportModule } from './support/support.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ContractsModule } from './contracts/contracts.module';
+import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ContractsModule } from './contracts/contracts.module';
     SupportModule,
     NotificationsModule,
     ContractsModule,
+    CouponsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

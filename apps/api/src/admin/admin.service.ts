@@ -10,6 +10,7 @@ import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -193,6 +194,44 @@ export class AdminService {
     }
     await this.prisma.package.delete({ where: { id: packageId } });
     return { id: packageId, deleted: true };
+  }
+
+  listCoupons() {
+    return this.prisma.coupon.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createCoupon(dto: CreateCouponDto) {
+    const existing = await this.prisma.coupon.findUnique({
+      where: { code: dto.code },
+    });
+    if (existing) {
+      throw new ConflictException('이미 존재하는 쿠폰 코드입니다.');
+    }
+    return this.prisma.coupon.create({
+      data: {
+        code: dto.code,
+        name: dto.name,
+        discountType: dto.discountType,
+        discountValue: dto.discountValue,
+        maxDiscountAmount: dto.maxDiscountAmount,
+        minOrderAmount: dto.minOrderAmount,
+        maxRedemptions: dto.maxRedemptions,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      },
+    });
+  }
+
+  async deactivateCoupon(id: string) {
+    const coupon = await this.prisma.coupon.findUnique({ where: { id } });
+    if (!coupon) {
+      throw new NotFoundException('쿠폰을 찾을 수 없습니다.');
+    }
+    return this.prisma.coupon.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 
   listBookings(status?: BookingStatus, photographerId?: string) {

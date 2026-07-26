@@ -112,6 +112,7 @@ export interface Booking {
   chatRoom?: { id: string; contactDisclosed: boolean } | null;
   deliveries?: Delivery[];
   rescheduleRequests?: RescheduleRequest[];
+  couponRedemption?: { discountAmount: number; couponId: string } | null;
   photographer?: {
     businessName: string;
     representativeName: string;
@@ -420,5 +421,22 @@ export interface AppContract {
   content: string;
   customerSignedAt: string | null;
   photographerSignedAt: string | null;
+  createdAt: string;
+}
+
+export type CouponDiscountType = "fixed" | "percent";
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  name: string;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  maxDiscountAmount: number | null;
+  minOrderAmount: number | null;
+  maxRedemptions: number | null;
+  redemptionCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
   createdAt: string;
 }

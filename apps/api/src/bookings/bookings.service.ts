@@ -171,6 +171,7 @@ export class BookingsService {
         package: true,
         deliveries: true,
         rescheduleRequests: { orderBy: { createdAt: 'desc' } },
+        couponRedemption: { select: { couponId: true, discountAmount: true } },
         photographer: {
           select: {
             businessName: true,
