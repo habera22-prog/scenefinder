@@ -7,6 +7,7 @@ import {
 import type { Prisma } from '@scenefinder/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddActualCostsDto } from './dto/actual-costs.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CUSTOMER_PENALTY_RATE = 0.1;
@@ -40,7 +41,10 @@ type BasicBooking = {
 
 @Injectable()
 export class CancellationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async preview(bookingId: string, userId: string, initiatedBy: Side) {
     const booking = await this.loadBookingAndAssertSide(
@@ -83,6 +87,24 @@ export class CancellationsService {
       where: { id: bookingId },
       data: { status: 'cancelled' },
     });
+
+    const recipientUserId =
+      initiatedBy === 'customer'
+        ? (
+            await this.prisma.photographer.findUnique({
+              where: { id: booking.photographerId },
+            })
+          )?.userId
+        : booking.customerId;
+    if (recipientUserId) {
+      await this.notifications.create(
+        recipientUserId,
+        'cancellation',
+        '예약이 취소되었어요',
+        outcome.ruleApplied,
+        `/bookings/${bookingId}`,
+      );
+    }
 
     return cancellation;
   }

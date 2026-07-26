@@ -12,6 +12,7 @@ import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { CreateConfirmationDto } from './dto/create-confirmation.dto';
 import { CreateRescheduleRequestDto } from './dto/create-reschedule-request.dto';
 import { RespondRescheduleDto } from './dto/respond-reschedule.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const HOLD_DURATION_MS = 60 * 60 * 1000; // 견적확정 +1시간
 const DEPOSIT_RATE = 0.3;
@@ -21,7 +22,10 @@ type BasicBooking = { customerId: string; photographerId: string };
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(customerId: string, dto: CreateBookingDto) {
     const photographer = await this.prisma.photographer.findUnique({
@@ -31,7 +35,7 @@ export class BookingsService {
       throw new NotFoundException('작가를 찾을 수 없습니다.');
     }
 
-    return this.prisma.booking.create({
+    const booking = await this.prisma.booking.create({
       data: {
         customerId,
         photographerId: dto.photographerId,
@@ -49,6 +53,16 @@ export class BookingsService {
       },
       include: { chatRoom: true },
     });
+
+    await this.notifications.create(
+      photographer.userId,
+      'booking_created',
+      '새 촬영 문의',
+      `${dto.location}에서의 촬영 문의가 도착했어요.`,
+      `/bookings/${booking.id}`,
+    );
+
+    return booking;
   }
 
   async quote(bookingId: string, userId: string, dto: CreateQuoteDto) {
@@ -71,7 +85,7 @@ export class BookingsService {
       dto.depositAmount ?? Math.round(dto.totalAmount * DEPOSIT_RATE);
     const balanceAmount = dto.totalAmount - depositAmount;
 
-    return this.prisma.booking.update({
+    const updated = await this.prisma.booking.update({
       where: { id: bookingId },
       data: {
         status: 'quoted',
@@ -81,6 +95,16 @@ export class BookingsService {
         holdExpiresAt: new Date(Date.now() + HOLD_DURATION_MS),
       },
     });
+
+    await this.notifications.create(
+      booking.customerId,
+      'quote_received',
+      '견적이 도착했어요',
+      `총 ${dto.totalAmount.toLocaleString()}원의 견적이 제시되었어요.`,
+      `/bookings/${bookingId}`,
+    );
+
+    return updated;
   }
 
   async acceptQuote(bookingId: string, userId: string) {
@@ -227,7 +251,7 @@ export class BookingsService {
       );
     }
 
-    return this.prisma.rescheduleRequest.create({
+    const created = await this.prisma.rescheduleRequest.create({
       data: {
         bookingId,
         requestedBy: side,
@@ -238,6 +262,17 @@ export class BookingsService {
         reason: dto.reason,
       },
     });
+
+    const recipientUserId = await this.otherPartyUserId(booking, side);
+    await this.notifications.create(
+      recipientUserId,
+      'reschedule_requested',
+      '일정 변경 요청',
+      '상대방이 촬영 일정 변경을 요청했어요.',
+      `/bookings/${bookingId}`,
+    );
+
+    return created;
   }
 
   async respondReschedule(
@@ -261,17 +296,34 @@ export class BookingsService {
       );
     }
 
+    const requesterUserId = await this.otherPartyUserId(booking, side);
+
     if (!dto.approve) {
-      return this.prisma.rescheduleRequest.update({
+      const rejected = await this.prisma.rescheduleRequest.update({
         where: { id: pending.id },
         data: { status: 'rejected', respondedAt: new Date() },
       });
+      await this.notifications.create(
+        requesterUserId,
+        'reschedule_responded',
+        '일정 변경 거절됨',
+        '요청한 일정 변경이 거절되었어요.',
+        `/bookings/${bookingId}`,
+      );
+      return rejected;
     }
 
     const updated = await this.prisma.rescheduleRequest.update({
       where: { id: pending.id },
       data: { status: 'approved', respondedAt: new Date() },
     });
+    await this.notifications.create(
+      requesterUserId,
+      'reschedule_responded',
+      '일정 변경 승인됨',
+      '요청한 일정 변경이 승인되었어요.',
+      `/bookings/${bookingId}`,
+    );
 
     const bookingUpdate: Prisma.BookingUpdateInput = {};
     if (pending.newShootDatetime) {
@@ -304,6 +356,19 @@ export class BookingsService {
       throw new NotFoundException('예약을 찾을 수 없습니다.');
     }
     return booking;
+  }
+
+  private async otherPartyUserId(
+    booking: BasicBooking,
+    side: 'customer' | 'photographer',
+  ): Promise<string> {
+    if (side === 'customer') {
+      const photographer = await this.prisma.photographer.findUnique({
+        where: { id: booking.photographerId },
+      });
+      return photographer!.userId;
+    }
+    return booking.customerId;
   }
 
   private async resolveSide(

@@ -10,12 +10,14 @@ import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly toss: TossPaymentsClient,
+    private readonly notifications: NotificationsService,
   ) {}
 
   listPhotographers(status?: 'pending' | 'verified' | 'rejected') {
@@ -115,10 +117,18 @@ export class AdminService {
     if (!ticket) {
       throw new NotFoundException('문의를 찾을 수 없습니다.');
     }
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id: ticketId },
       data: { adminResponse: response, status: 'answered', respondedAt: new Date() },
     });
+    await this.notifications.create(
+      ticket.userId,
+      'support_answered',
+      '문의에 답변이 등록되었어요',
+      response,
+      '/me/support',
+    );
+    return updated;
   }
 
   listAllShootCategories() {

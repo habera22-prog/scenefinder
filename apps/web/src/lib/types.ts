@@ -314,6 +314,28 @@ export interface AdminBookingDetail extends Omit<Booking, "customer" | "photogra
   } | null;
 }
 
+export type AppNotificationType =
+  | "booking_created"
+  | "quote_received"
+  | "payment_completed"
+  | "cancellation"
+  | "reschedule_requested"
+  | "reschedule_responded"
+  | "dispute_filed"
+  | "dispute_resolved"
+  | "support_answered"
+  | "delivery_ready";
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  title: string;
+  message: string;
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface AdminDashboard {
   newCustomersThisWeek: number;
   newPhotographersThisWeek: number;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
+import { NotificationBell } from "./NotificationBell";
 
 export function Header() {
   const { user, logout, isLoading } = useAuth();
@@ -96,6 +97,7 @@ export function Header() {
                   고객센터
                 </Link>
               )}
+              <NotificationBell />
               <span className="hidden text-sm text-muted-foreground sm:inline">
                 {user.name}님
               </span>

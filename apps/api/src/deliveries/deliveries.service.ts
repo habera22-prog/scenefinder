@@ -9,12 +9,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { CreateRevisionRequestDto } from './dto/create-revision-request.dto';
 import { UpdateRevisionRequestDto } from './dto/update-revision-request.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DOWNLOAD_EXPIRY_DAYS = 30;
 
 @Injectable()
 export class DeliveriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async completeBooking(bookingId: string, userId: string) {
     const booking = await this.getBookingForPhotographer(bookingId, userId);
@@ -59,6 +63,13 @@ export class DeliveriesService {
       where: { id: bookingId },
       data: { status: 'delivered' },
     });
+    await this.notifications.create(
+      booking.customerId,
+      'delivery_ready',
+      '사진이 도착했어요',
+      '촬영 결과물이 업로드되었어요. 확인해보세요.',
+      `/bookings/${bookingId}`,
+    );
     return delivery;
   }
 

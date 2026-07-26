@@ -151,6 +151,19 @@ enum RescheduleRequestedBy {
   photographer
 }
 
+enum NotificationType {
+  booking_created
+  quote_received
+  payment_completed
+  cancellation
+  reschedule_requested
+  reschedule_responded
+  dispute_filed
+  dispute_resolved
+  support_answered
+  delivery_ready
+}
+
 enum RescheduleStatus {
   pending
   approved
@@ -177,6 +190,7 @@ model User {
   messages       Message[]
   favorites      Favorite[]
   supportTickets SupportTicket[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -584,4 +598,23 @@ model RescheduleRequest {
   booking Booking @relation(fields: [bookingId], references: [id])
 
   @@map("reschedule_requests")
+}
+
+// ─────────────────────────────────────────────
+// 2-18. notifications (알림)
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
 }

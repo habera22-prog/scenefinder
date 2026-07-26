@@ -9,6 +9,7 @@ import type { Prisma, PaymentStatus } from '@scenefinder/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { TossPaymentsClient } from './toss-payments.client';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type BasicBooking = { customerId: string; photographerId: string };
 
@@ -18,6 +19,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly toss: TossPaymentsClient,
     private readonly config: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async requestDeposit(bookingId: string, userId: string) {
@@ -122,6 +124,19 @@ export class PaymentsService {
         where: { bookingId: payment.bookingId },
         data: { contactDisclosed: true },
       });
+    }
+
+    const photographer = await this.prisma.photographer.findUnique({
+      where: { id: payment.booking.photographerId },
+    });
+    if (photographer) {
+      await this.notifications.create(
+        photographer.userId,
+        'payment_completed',
+        payment.type === 'deposit' ? '예약금 결제 완료' : '잔금 결제 완료',
+        `${payment.amount.toLocaleString()}원이 결제되었어요.`,
+        `/bookings/${payment.bookingId}`,
+      );
     }
 
     return updatedPayment;
