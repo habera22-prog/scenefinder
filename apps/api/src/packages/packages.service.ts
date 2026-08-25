@@ -28,11 +28,27 @@ export class PackagesService {
       );
     }
 
+    // 카테고리별 시간당 최저가(관리자 설정) 미달 상품 등록 차단 — 수수료 회피용 저가 신고 방지
+    const category = await this.prisma.shootCategory.findUnique({
+      where: { code: dto.category },
+    });
+    if (category?.minHourlyRate) {
+      const minAmount = Math.ceil(
+        (category.minHourlyRate * dto.durationMin) / 60,
+      );
+      if (dto.basePrice < minAmount) {
+        throw new ForbiddenException(
+          `이 분야("${category.label}")는 시간당 최저가 ${category.minHourlyRate.toLocaleString()}원이 적용돼요. ${dto.durationMin}분 상품이면 최소 ${minAmount.toLocaleString()}원 이상으로 등록해야 합니다.`,
+        );
+      }
+    }
+
     return this.prisma.package.create({
       data: {
         photographerId,
         title: dto.title,
         category: dto.category,
+        captureModeCode: dto.captureModeCode,
         durationMin: dto.durationMin,
         basePrice: dto.basePrice,
         includedPhotos: dto.includedPhotos,

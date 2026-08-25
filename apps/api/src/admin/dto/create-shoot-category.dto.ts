@@ -15,4 +15,9 @@ export class CreateShootCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minHourlyRate?: number;
 }

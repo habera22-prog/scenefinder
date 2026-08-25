@@ -153,6 +153,7 @@ export class AdminService {
         code: dto.code,
         label: dto.label,
         sortOrder: dto.sortOrder ?? 0,
+        minHourlyRate: dto.minHourlyRate,
       },
     });
   }

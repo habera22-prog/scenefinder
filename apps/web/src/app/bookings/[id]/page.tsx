@@ -66,6 +66,7 @@ export default function BookingRoomPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState("");
+  const [quoteDurationMin, setQuoteDurationMin] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadBooking = useCallback(async () => {
@@ -138,7 +139,10 @@ export default function BookingRoomPage() {
       await apiFetch(`/bookings/${params.id}/quote`, {
         method: "POST",
         token,
-        body: { totalAmount: Number(quoteAmount) },
+        body: {
+          totalAmount: Number(quoteAmount),
+          durationMin: quoteDurationMin ? Number(quoteDurationMin) : undefined,
+        },
       });
     });
   }
@@ -308,7 +312,24 @@ export default function BookingRoomPage() {
                 value={quoteAmount}
                 onChange={(e) => setQuoteAmount(e.target.value)}
               />
-              <Button disabled={isBusy || !quoteAmount} onClick={submitQuote}>
+              {!booking.packageId && (
+                <>
+                  <Label htmlFor="quote-duration">촬영 시간(분)</Label>
+                  <Input
+                    id="quote-duration"
+                    type="number"
+                    value={quoteDurationMin}
+                    onChange={(e) => setQuoteDurationMin(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    상품 없는 맞춤 견적은 분야별 시간당 최저가 검증을 위해 촬영 시간이 필요해요.
+                  </p>
+                </>
+              )}
+              <Button
+                disabled={isBusy || !quoteAmount || (!booking.packageId && !quoteDurationMin)}
+                onClick={submitQuote}
+              >
                 견적 제시하기
               </Button>
             </div>

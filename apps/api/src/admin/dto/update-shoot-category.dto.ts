@@ -14,4 +14,9 @@ export class UpdateShootCategoryDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minHourlyRate?: number;
 }

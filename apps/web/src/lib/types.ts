@@ -16,6 +16,7 @@ export interface ShootCategory {
   label: string;
   isActive: boolean;
   sortOrder: number;
+  minHourlyRate?: number | null;
 }
 
 export interface PhotographerSummary {

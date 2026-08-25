@@ -104,6 +104,13 @@ export class BookingsService {
       );
     }
 
+    await this.assertAboveMinHourlyRate(
+      booking.shootCategoryId,
+      booking.packageId,
+      dto.totalAmount,
+      dto.durationMin,
+    );
+
     const depositAmount =
       dto.depositAmount ?? Math.round(dto.totalAmount * DEPOSIT_RATE);
     const balanceAmount = dto.totalAmount - depositAmount;
@@ -370,6 +377,39 @@ export class BookingsService {
     }
 
     return updated;
+  }
+
+  // 카테고리별 시간당 최저가(관리자 설정) 미달 견적 차단 — 수수료 회피용 저가 신고 방지
+  private async assertAboveMinHourlyRate(
+    shootCategoryId: string,
+    packageId: string | null,
+    totalAmount: number,
+    quoteDurationMin?: number,
+  ) {
+    const category = await this.prisma.shootCategory.findUnique({
+      where: { id: shootCategoryId },
+    });
+    if (!category?.minHourlyRate) return;
+
+    let durationMin = quoteDurationMin;
+    if (!durationMin && packageId) {
+      const pkg = await this.prisma.package.findUnique({
+        where: { id: packageId },
+      });
+      durationMin = pkg?.durationMin;
+    }
+    if (!durationMin) {
+      throw new BadRequestException(
+        '상품 없이 맞춤 견적을 제시할 때는 촬영 시간(분)을 입력해야 합니다.',
+      );
+    }
+
+    const minAmount = Math.ceil((category.minHourlyRate * durationMin) / 60);
+    if (totalAmount < minAmount) {
+      throw new BadRequestException(
+        `이 분야("${category.label}")는 시간당 최저가 ${category.minHourlyRate.toLocaleString()}원이 적용돼요. ${durationMin}분 촬영이면 최소 ${minAmount.toLocaleString()}원 이상으로 견적을 제시해야 합니다.`,
+      );
+    }
   }
 
   private async findOrThrow(bookingId: string) {

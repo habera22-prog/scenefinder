@@ -21,6 +21,9 @@ function CategoryRow({
 }) {
   const [label, setLabel] = useState(category.label);
   const [sortOrder, setSortOrder] = useState(String(category.sortOrder));
+  const [minHourlyRate, setMinHourlyRate] = useState(
+    category.minHourlyRate != null ? String(category.minHourlyRate) : "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
@@ -31,7 +34,11 @@ function CategoryRow({
       await apiFetch(`/admin/shoot-categories/${category.id}`, {
         method: "PATCH",
         token,
-        body: { label, sortOrder: Number(sortOrder) },
+        body: {
+          label,
+          sortOrder: Number(sortOrder),
+          minHourlyRate: minHourlyRate.trim() === "" ? undefined : Number(minHourlyRate),
+        },
       });
       onDone();
     } catch (err) {
@@ -75,12 +82,24 @@ function CategoryRow({
           onChange={(e) => setSortOrder(e.target.value)}
           className="w-20"
         />
+        <Input
+          type="number"
+          value={minHourlyRate}
+          onChange={(e) => setMinHourlyRate(e.target.value)}
+          placeholder="시간당 최저가"
+          className="w-32"
+        />
         <Button size="sm" variant="secondary" disabled={isBusy} onClick={save}>
           저장
         </Button>
         <Badge className={category.isActive ? "" : "bg-muted text-muted-foreground"}>
           {category.isActive ? "노출중" : "비활성"}
         </Badge>
+        <span className="text-xs text-muted-foreground">
+          {category.minHourlyRate
+            ? `시간당 최저 ${category.minHourlyRate.toLocaleString()}원`
+            : "최저가 제한 없음"}
+        </span>
         <Button
           size="sm"
           variant={category.isActive ? "danger" : "primary"}
@@ -101,6 +120,7 @@ export default function AdminCategoriesPage() {
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
+  const [minHourlyRate, setMinHourlyRate] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -126,10 +146,15 @@ export default function AdminCategoriesPage() {
       await apiFetch("/admin/shoot-categories", {
         method: "POST",
         token,
-        body: { code: code.trim(), label: label.trim() },
+        body: {
+          code: code.trim(),
+          label: label.trim(),
+          minHourlyRate: minHourlyRate.trim() === "" ? undefined : Number(minHourlyRate),
+        },
       });
       setCode("");
       setLabel("");
+      setMinHourlyRate("");
       load();
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : "추가에 실패했습니다.");
@@ -172,6 +197,17 @@ export default function AdminCategoriesPage() {
               onChange={(e) => setLabel(e.target.value)}
               placeholder="시니어 투어"
               className="w-40"
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-min-rate">시간당 최저가(원)</Label>
+            <Input
+              id="new-min-rate"
+              type="number"
+              value={minHourlyRate}
+              onChange={(e) => setMinHourlyRate(e.target.value)}
+              placeholder="선택"
+              className="w-32"
             />
           </div>
           <Button type="submit" size="sm" disabled={isCreating}>
