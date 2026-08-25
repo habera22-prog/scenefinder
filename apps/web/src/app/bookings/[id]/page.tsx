@@ -268,6 +268,17 @@ export default function BookingRoomPage() {
               <dt className="text-muted-foreground">장소</dt>
               <dd>{booking.location ?? "-"}</dd>
             </div>
+            {booking.location &&
+              booking.photographer &&
+              booking.photographer.activeRegions.length > 0 &&
+              !booking.photographer.activeRegions.some((r) =>
+                booking.location!.includes(r),
+              ) && (
+                <p className="text-xs text-amber-600">
+                  작가의 활동 지역({booking.photographer.activeRegions.join(", ")}) 밖의
+                  장소예요. 출장비 등 추가 협의가 필요할 수 있어요.
+                </p>
+              )}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">인원</dt>
               <dd>{booking.headcount ?? "-"}명</dd>

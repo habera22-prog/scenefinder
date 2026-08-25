@@ -293,6 +293,14 @@ export default function PhotographerProfilePage() {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                 />
+                {location.trim().length > 0 &&
+                  profile.activeRegions.length > 0 &&
+                  !profile.activeRegions.some((r) => location.includes(r)) && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      이 작가의 활동 지역({profile.activeRegions.join(", ")})과 다른 장소예요.
+                      예약은 그대로 진행할 수 있지만, 출장비 등 추가 협의가 필요할 수 있어요.
+                    </p>
+                  )}
               </div>
               <div>
                 <Label htmlFor="headcount">인원</Label>
