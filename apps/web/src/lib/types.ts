@@ -400,6 +400,43 @@ export interface AdminPhotographer {
   user: { name: string; phone: string | null; email: string; status: string };
 }
 
+export type InquiryStatus = "received" | "reviewing" | "matched" | "closed";
+
+export interface CorporateInquiry {
+  id: string;
+  companyName: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  shootDate: string | null;
+  location: string | null;
+  purpose: string | null;
+  captureModeCode: string | null;
+  expectedDurationMin: number | null;
+  expectedHeadcount: number | null;
+  deliverableUsage: string | null;
+  budgetRange: string | null;
+  taxInvoiceRequired: boolean;
+  notes: string | null;
+  status: InquiryStatus;
+  adminMemo: string | null;
+  createdAt: string;
+}
+
+export interface PartnershipInquiry {
+  id: string;
+  companyName: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  companyType: string;
+  collaborationType: string | null;
+  proposal: string;
+  status: InquiryStatus;
+  adminMemo: string | null;
+  createdAt: string;
+}
+
 export interface AdminPayment {
   id: string;
   bookingId: string;

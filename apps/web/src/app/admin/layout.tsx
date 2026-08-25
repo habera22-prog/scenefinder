@@ -19,6 +19,7 @@ const TABS = [
   { href: "/admin/capture-modes", label: "촬영방식 관리" },
   { href: "/admin/content", label: "콘텐츠 검수" },
   { href: "/admin/coupons", label: "쿠폰 관리" },
+  { href: "/admin/inquiries", label: "기업/제휴 문의" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

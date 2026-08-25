@@ -12,6 +12,7 @@ import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 import { CreateCaptureModeDto } from './dto/create-capture-mode.dto';
 import { UpdateCaptureModeDto } from './dto/update-capture-mode.dto';
+import { UpdateInquiryStatusDto } from './dto/update-inquiry-status.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -205,6 +206,42 @@ export class AdminService {
     return this.prisma.captureMode.update({
       where: { id },
       data: dto,
+    });
+  }
+
+  listCorporateInquiries(status?: 'received' | 'reviewing' | 'matched' | 'closed') {
+    return this.prisma.corporateInquiry.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateCorporateInquiryStatus(id: string, dto: UpdateInquiryStatusDto) {
+    const inquiry = await this.prisma.corporateInquiry.findUnique({ where: { id } });
+    if (!inquiry) {
+      throw new NotFoundException('문의를 찾을 수 없습니다.');
+    }
+    return this.prisma.corporateInquiry.update({
+      where: { id },
+      data: { status: dto.status, adminMemo: dto.adminMemo },
+    });
+  }
+
+  listPartnershipInquiries(status?: 'received' | 'reviewing' | 'matched' | 'closed') {
+    return this.prisma.partnershipInquiry.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updatePartnershipInquiryStatus(id: string, dto: UpdateInquiryStatusDto) {
+    const inquiry = await this.prisma.partnershipInquiry.findUnique({ where: { id } });
+    if (!inquiry) {
+      throw new NotFoundException('문의를 찾을 수 없습니다.');
+    }
+    return this.prisma.partnershipInquiry.update({
+      where: { id },
+      data: { status: dto.status, adminMemo: dto.adminMemo },
     });
   }
 

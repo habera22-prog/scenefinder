@@ -21,6 +21,7 @@ import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
 import { CreateCaptureModeDto } from './dto/create-capture-mode.dto';
 import { UpdateCaptureModeDto } from './dto/update-capture-mode.dto';
+import { UpdateInquiryStatusDto } from './dto/update-inquiry-status.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
@@ -130,6 +131,36 @@ export class AdminController {
     @Body() dto: UpdateCaptureModeDto,
   ) {
     return this.adminService.updateCaptureMode(id, dto);
+  }
+
+  @Get('inquiries/corporate')
+  listCorporateInquiries(
+    @Query('status') status?: 'received' | 'reviewing' | 'matched' | 'closed',
+  ) {
+    return this.adminService.listCorporateInquiries(status);
+  }
+
+  @Patch('inquiries/corporate/:id')
+  updateCorporateInquiryStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateInquiryStatusDto,
+  ) {
+    return this.adminService.updateCorporateInquiryStatus(id, dto);
+  }
+
+  @Get('inquiries/partnership')
+  listPartnershipInquiries(
+    @Query('status') status?: 'received' | 'reviewing' | 'matched' | 'closed',
+  ) {
+    return this.adminService.listPartnershipInquiries(status);
+  }
+
+  @Patch('inquiries/partnership/:id')
+  updatePartnershipInquiryStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateInquiryStatusDto,
+  ) {
+    return this.adminService.updatePartnershipInquiryStatus(id, dto);
   }
 
   @Delete('portfolios/:id')

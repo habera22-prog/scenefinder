@@ -22,6 +22,7 @@ import { SettlementsModule } from './settlements/settlements.module';
 import { AdminModule } from './admin/admin.module';
 import { ShootCategoriesModule } from './shoot-categories/shoot-categories.module';
 import { CaptureModesModule } from './capture-modes/capture-modes.module';
+import { InquiriesModule } from './inquiries/inquiries.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PagesModule } from './pages/pages.module';
@@ -53,6 +54,7 @@ import { CouponsModule } from './coupons/coupons.module';
     AdminModule,
     ShootCategoriesModule,
     CaptureModesModule,
+    InquiriesModule,
     UploadsModule,
     FavoritesModule,
     PagesModule,
