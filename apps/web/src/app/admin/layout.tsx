@@ -16,6 +16,7 @@ const TABS = [
   { href: "/admin/disputes", label: "분쟁 처리" },
   { href: "/admin/support", label: "고객센터" },
   { href: "/admin/categories", label: "카테고리 관리" },
+  { href: "/admin/capture-modes", label: "촬영방식 관리" },
   { href: "/admin/content", label: "콘텐츠 검수" },
   { href: "/admin/coupons", label: "쿠폰 관리" },
 ];

@@ -19,6 +19,10 @@ export class CreateBookingDto {
   @IsUUID()
   shootCategoryId: string;
 
+  @IsOptional()
+  @IsUUID()
+  captureModeId?: string;
+
   @IsString()
   shootDatetime: string;
 

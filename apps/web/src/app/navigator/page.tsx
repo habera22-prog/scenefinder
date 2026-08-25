@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { ShootCategory } from "@/lib/types";
+import type { CaptureMode, ShootCategory } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
@@ -18,16 +18,18 @@ const MOODS = [
   "시네마틱",
 ];
 
-type Step = "category" | "mood" | "conditions";
-const STEPS: Step[] = ["category", "mood", "conditions"];
+type Step = "category" | "captureMode" | "mood" | "conditions";
+const STEPS: Step[] = ["category", "captureMode", "mood", "conditions"];
 
 export default function NavigatorPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<ShootCategory[] | null>(null);
+  const [captureModes, setCaptureModes] = useState<CaptureMode[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>("category");
   const [categoryCode, setCategoryCode] = useState<string | null>(null);
+  const [captureModeCode, setCaptureModeCode] = useState<string | null>(null);
   const [mood, setMood] = useState<string | null>(null);
   const [region, setRegion] = useState("");
   const [headcount, setHeadcount] = useState("");
@@ -41,6 +43,9 @@ export default function NavigatorPage() {
           err instanceof ApiError ? err.message : "촬영 종류를 불러오지 못했습니다.",
         ),
       );
+    apiFetch<CaptureMode[]>("/capture-modes")
+      .then(setCaptureModes)
+      .catch(() => {});
   }, []);
 
   const stepIndex = STEPS.indexOf(step);
@@ -48,6 +53,7 @@ export default function NavigatorPage() {
   function goToResults() {
     const params = new URLSearchParams();
     if (categoryCode) params.set("category", categoryCode);
+    if (captureModeCode) params.set("captureMode", captureModeCode);
     if (region) params.set("region", region);
     router.push(`/photographers?${params.toString()}`);
   }
@@ -94,9 +100,51 @@ export default function NavigatorPage() {
               ))}
             </div>
             <div className="mt-8 flex justify-end">
-              <Button disabled={!categoryCode} onClick={() => setStep("mood")}>
+              <Button disabled={!categoryCode} onClick={() => setStep("captureMode")}>
                 다음
               </Button>
+            </div>
+          </>
+        )}
+
+        {step === "captureMode" && (
+          <>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              2단계 · 촬영 방식
+            </p>
+            <h2 className="mb-6 text-xl font-bold text-foreground">
+              어떤 방식으로 촬영할까요?
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {captureModes?.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setCaptureModeCode(m.code)}
+                  className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
+                    captureModeCode === m.code
+                      ? "border-brand bg-brand-muted text-brand"
+                      : "border-border bg-card text-foreground hover:border-brand/50"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+              <button
+                onClick={() => setCaptureModeCode(null)}
+                className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
+                  captureModeCode === null
+                    ? "border-brand bg-brand-muted text-brand"
+                    : "border-border bg-card text-foreground hover:border-brand/50"
+                }`}
+              >
+                잘 모르겠어요 / 작가 추천
+              </button>
+            </div>
+            <div className="mt-8 flex justify-between">
+              <Button variant="secondary" onClick={() => setStep("category")}>
+                이전
+              </Button>
+              <Button onClick={() => setStep("mood")}>다음</Button>
             </div>
           </>
         )}
@@ -104,7 +152,7 @@ export default function NavigatorPage() {
         {step === "mood" && (
           <>
             <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              2단계 · 분위기
+              3단계 · 분위기
             </p>
             <h2 className="mb-6 text-xl font-bold text-foreground">
               원하시는 촬영 분위기는요?
@@ -125,7 +173,7 @@ export default function NavigatorPage() {
               ))}
             </div>
             <div className="mt-8 flex justify-between">
-              <Button variant="secondary" onClick={() => setStep("category")}>
+              <Button variant="secondary" onClick={() => setStep("captureMode")}>
                 이전
               </Button>
               <Button disabled={!mood} onClick={() => setStep("conditions")}>
@@ -138,7 +186,7 @@ export default function NavigatorPage() {
         {step === "conditions" && (
           <>
             <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              3단계 · 촬영 조건
+              4단계 · 촬영 조건
             </p>
             <h2 className="mb-6 text-xl font-bold text-foreground">
               촬영 조건을 알려주세요

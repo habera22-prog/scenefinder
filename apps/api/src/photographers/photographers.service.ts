@@ -43,6 +43,7 @@ export class PhotographersService {
         activeRegions: dto.activeRegions,
         moodTags: dto.moodTags,
         categories: dto.categories,
+        captureCapabilities: dto.captureCapabilities,
         verificationStatus: 'pending',
       },
     });
@@ -89,6 +90,7 @@ export class PhotographersService {
         activeRegions: true,
         moodTags: true,
         categories: true,
+        captureCapabilities: true,
         verificationStatus: true,
         completedBookingsCount: true,
         avgRating: true,
@@ -178,6 +180,9 @@ export class PhotographersService {
         verificationStatus: 'verified',
         ...(query.category ? { categories: { has: query.category } } : {}),
         ...(query.region ? { activeRegions: { has: query.region } } : {}),
+        ...(query.captureMode
+          ? { captureCapabilities: { has: query.captureMode } }
+          : {}),
       },
       select: {
         id: true,
@@ -185,6 +190,7 @@ export class PhotographersService {
         activeRegions: true,
         moodTags: true,
         categories: true,
+        captureCapabilities: true,
         avgRating: true,
         completedBookingsCount: true,
       },

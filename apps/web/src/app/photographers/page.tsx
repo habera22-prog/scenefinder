@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import type { FavoriteItem, PhotographerSummary, ShootCategory } from "@/lib/types";
+import type { CaptureMode, FavoriteItem, PhotographerSummary, ShootCategory } from "@/lib/types";
 import { PhotographerCard } from "@/components/photographers/PhotographerCard";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
@@ -14,9 +14,11 @@ function ResultsList() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") ?? "";
   const region = searchParams.get("region") ?? "";
+  const captureMode = searchParams.get("captureMode") ?? "";
   const { user, token } = useAuth();
 
   const [categories, setCategories] = useState<ShootCategory[]>([]);
+  const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
   const [regionInput, setRegionInput] = useState(region);
   const [photographers, setPhotographers] = useState<PhotographerSummary[] | null>(
     null,
@@ -26,6 +28,7 @@ function ResultsList() {
 
   useEffect(() => {
     apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
+    apiFetch<CaptureMode[]>("/capture-modes").then(setCaptureModes).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ function ResultsList() {
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (region) params.set("region", region);
+    if (captureMode) params.set("captureMode", captureMode);
     apiFetch<PhotographerSummary[]>(`/photographers?${params.toString()}`)
       .then(setPhotographers)
       .catch((err) =>
@@ -76,14 +80,18 @@ function ResultsList() {
           err instanceof ApiError ? err.message : "작가 목록을 불러오지 못했습니다.",
         ),
       );
-  }, [category, region]);
+  }, [category, region, captureMode]);
 
-  function updateParams(next: { category?: string; region?: string }) {
+  function updateParams(next: { category?: string; region?: string; captureMode?: string }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.category !== undefined) params.set("category", next.category);
     if (next.region !== undefined) {
       if (next.region) params.set("region", next.region);
       else params.delete("region");
+    }
+    if (next.captureMode !== undefined) {
+      if (next.captureMode) params.set("captureMode", next.captureMode);
+      else params.delete("captureMode");
     }
     router.push(`/photographers?${params.toString()}`);
   }
@@ -110,6 +118,24 @@ function ResultsList() {
             }`}
           >
             {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {captureModes.map((m) => (
+          <button
+            key={m.id}
+            onClick={() =>
+              updateParams({ captureMode: captureMode === m.code ? "" : m.code })
+            }
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              captureMode === m.code
+                ? "border-brand bg-brand-muted text-brand"
+                : "border-border bg-card text-foreground hover:border-brand/50"
+            }`}
+          >
+            {m.label}
           </button>
         ))}
       </div>

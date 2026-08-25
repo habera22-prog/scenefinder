@@ -19,6 +19,8 @@ import { AdminService } from './admin.service';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { CreateCaptureModeDto } from './dto/create-capture-mode.dto';
+import { UpdateCaptureModeDto } from './dto/update-capture-mode.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
@@ -110,6 +112,24 @@ export class AdminController {
     @Body() dto: UpdateShootCategoryDto,
   ) {
     return this.adminService.updateShootCategory(id, dto);
+  }
+
+  @Get('capture-modes')
+  listCaptureModes() {
+    return this.adminService.listAllCaptureModes();
+  }
+
+  @Post('capture-modes')
+  createCaptureMode(@Body() dto: CreateCaptureModeDto) {
+    return this.adminService.createCaptureMode(dto);
+  }
+
+  @Patch('capture-modes/:id')
+  updateCaptureMode(
+    @Param('id') id: string,
+    @Body() dto: UpdateCaptureModeDto,
+  ) {
+    return this.adminService.updateCaptureMode(id, dto);
   }
 
   @Delete('portfolios/:id')

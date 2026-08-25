@@ -8,4 +8,8 @@ export class SearchPhotographersQueryDto {
   @IsOptional()
   @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsString()
+  captureMode?: string;
 }

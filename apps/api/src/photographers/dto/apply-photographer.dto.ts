@@ -34,4 +34,9 @@ export class ApplyPhotographerDto {
   @ArrayNotEmpty()
   @IsString({ each: true })
   categories: string[];
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  captureCapabilities: string[];
 }

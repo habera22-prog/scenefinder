@@ -10,6 +10,8 @@ import { TossPaymentsClient } from '../payments/toss-payments.client';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
 import { CreateShootCategoryDto } from './dto/create-shoot-category.dto';
 import { UpdateShootCategoryDto } from './dto/update-shoot-category.dto';
+import { CreateCaptureModeDto } from './dto/create-capture-mode.dto';
+import { UpdateCaptureModeDto } from './dto/update-capture-mode.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -164,6 +166,39 @@ export class AdminService {
       throw new NotFoundException('카테고리를 찾을 수 없습니다.');
     }
     return this.prisma.shootCategory.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  listAllCaptureModes() {
+    return this.prisma.captureMode.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async createCaptureMode(dto: CreateCaptureModeDto) {
+    const existing = await this.prisma.captureMode.findUnique({
+      where: { code: dto.code },
+    });
+    if (existing) {
+      throw new ConflictException('이미 존재하는 code입니다.');
+    }
+    return this.prisma.captureMode.create({
+      data: {
+        code: dto.code,
+        label: dto.label,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+  }
+
+  async updateCaptureMode(id: string, dto: UpdateCaptureModeDto) {
+    const mode = await this.prisma.captureMode.findUnique({ where: { id } });
+    if (!mode) {
+      throw new NotFoundException('촬영 방식을 찾을 수 없습니다.');
+    }
+    return this.prisma.captureMode.update({
       where: { id },
       data: dto,
     });

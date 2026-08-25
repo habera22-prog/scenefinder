@@ -19,6 +19,14 @@ export interface ShootCategory {
   minHourlyRate?: number | null;
 }
 
+export interface CaptureMode {
+  id: string;
+  code: string;
+  label: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 export interface PhotographerSummary {
   id: string;
   businessName: string;
@@ -43,6 +51,7 @@ export interface PackageItem {
   photographerId: string;
   title: string;
   category: string;
+  captureModeCode?: string | null;
   durationMin: number;
   basePrice: number;
   includedPhotos: number;
@@ -97,6 +106,7 @@ export interface Booking {
   packageId: string | null;
   status: BookingStatus;
   shootCategoryId: string;
+  captureModeId?: string | null;
   shootDatetime: string | null;
   location: string | null;
   headcount: number | null;
@@ -110,6 +120,7 @@ export interface Booking {
   updatedAt: string;
   confirmations?: BookingConfirmationRecord[];
   shootCategory?: ShootCategory;
+  captureMode?: CaptureMode | null;
   chatRoom?: { id: string; contactDisclosed: boolean } | null;
   deliveries?: Delivery[];
   rescheduleRequests?: RescheduleRequest[];

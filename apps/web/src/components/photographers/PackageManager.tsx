@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
-import type { PackageItem } from "@/lib/types";
+import type { CaptureMode, PackageItem, ShootCategory } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
@@ -12,6 +12,8 @@ interface Props {
   token: string | null;
   verified: boolean;
   packages: PackageItem[];
+  categories: ShootCategory[];
+  captureModes: CaptureMode[];
   onChange: (packages: PackageItem[]) => void;
 }
 
@@ -20,11 +22,14 @@ export function PackageManager({
   token,
   verified,
   packages,
+  categories,
+  captureModes,
   onChange,
 }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
+  const [captureModeCode, setCaptureModeCode] = useState("");
   const [durationMin, setDurationMin] = useState("60");
   const [basePrice, setBasePrice] = useState("");
   const [includedPhotos, setIncludedPhotos] = useState("");
@@ -33,9 +38,21 @@ export function PackageManager({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const selectedCategory = categories.find((c) => c.code === category);
+  const durationMinNumber = Number(durationMin) || 0;
+  const minAmount = selectedCategory?.minHourlyRate
+    ? Math.ceil((selectedCategory.minHourlyRate * durationMinNumber) / 60)
+    : 0;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (minAmount > 0 && Number(basePrice) < minAmount) {
+      setError(
+        `이 분야는 시간당 최저가가 적용돼요. ${durationMinNumber}분 상품이면 최소 ${minAmount.toLocaleString()}원 이상으로 등록해야 합니다.`,
+      );
+      return;
+    }
     setIsSubmitting(true);
     try {
       const pkg = await apiFetch<PackageItem>(
@@ -46,6 +63,7 @@ export function PackageManager({
           body: {
             title,
             category,
+            captureModeCode: captureModeCode || undefined,
             durationMin: Number(durationMin),
             basePrice: Number(basePrice),
             includedPhotos: Number(includedPhotos),
@@ -58,6 +76,7 @@ export function PackageManager({
       setShowForm(false);
       setTitle("");
       setCategory("");
+      setCaptureModeCode("");
       setBasePrice("");
       setIncludedPhotos("");
     } catch (err) {
@@ -93,14 +112,44 @@ export function PackageManager({
             <Input id="pkg-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="pkg-category">분야 코드</Label>
-            <Input
+            <Label htmlFor="pkg-category">분야</Label>
+            <select
               id="pkg-category"
               required
-              placeholder="예: event"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-            />
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+            >
+              <option value="">선택하세요</option>
+              {categories.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            {selectedCategory?.minHourlyRate ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                이 분야 시간당 최저가 {selectedCategory.minHourlyRate.toLocaleString()}원
+                {durationMinNumber > 0 &&
+                  ` · ${durationMinNumber}분이면 최소 ${minAmount.toLocaleString()}원 이상`}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <Label htmlFor="pkg-capture-mode">촬영 방식</Label>
+            <select
+              id="pkg-capture-mode"
+              value={captureModeCode}
+              onChange={(e) => setCaptureModeCode(e.target.value)}
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+            >
+              <option value="">선택 안 함</option>
+              {captureModes.map((m) => (
+                <option key={m.code} value={m.code}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -163,17 +212,20 @@ export function PackageManager({
         <p className="text-sm text-muted-foreground">등록된 상품이 없습니다.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {packages.map((pkg) => (
+          {packages.map((pkg) => {
+            const modeLabel = captureModes.find((m) => m.code === pkg.captureModeCode)?.label;
+            return (
             <div key={pkg.id} className="rounded-xl border border-border p-4">
               <p className="font-semibold text-foreground">{pkg.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {pkg.durationMin}분 · 보정 {pkg.includedPhotos}장+
+                {pkg.durationMin}분 · 보정 {pkg.includedPhotos}장+{modeLabel ? ` · ${modeLabel}` : ""}
               </p>
               <p className="mt-2 font-medium text-brand">
                 {pkg.basePrice.toLocaleString()}원~
               </p>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>

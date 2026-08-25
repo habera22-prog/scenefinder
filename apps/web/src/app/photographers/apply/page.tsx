@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import type { MyPhotographerProfile, ShootCategory } from "@/lib/types";
+import type { CaptureMode, MyPhotographerProfile, ShootCategory } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,7 @@ const VERIFICATION_LABEL: Record<string, string> = {
 function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => void }) {
   const { token } = useAuth();
   const [categories, setCategories] = useState<ShootCategory[]>([]);
+  const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
   const [businessRegNo, setBusinessRegNo] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [representativeName, setRepresentativeName] = useState("");
@@ -31,15 +32,23 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
   const [activeRegions, setActiveRegions] = useState("");
   const [moodTags, setMoodTags] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
+    apiFetch<CaptureMode[]>("/capture-modes").then(setCaptureModes).catch(() => {});
   }, []);
 
   function toggleCategory(code: string) {
     setSelectedCategories((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  }
+
+  function toggleCapability(code: string) {
+    setSelectedCapabilities((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
     );
   }
@@ -61,6 +70,7 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
           activeRegions: activeRegions.split(",").map((s) => s.trim()).filter(Boolean),
           moodTags: moodTags.split(",").map((s) => s.trim()).filter(Boolean),
           categories: selectedCategories,
+          captureCapabilities: selectedCapabilities,
         },
       });
       onApplied(profile);
@@ -167,6 +177,25 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
             ))}
           </div>
         </div>
+        <div>
+          <Label>촬영 방식 (가능한 방식을 모두 선택)</Label>
+          <div className="flex flex-wrap gap-2">
+            {captureModes.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => toggleCapability(m.code)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                  selectedCapabilities.includes(m.code)
+                    ? "border-brand bg-brand-muted text-brand"
+                    : "border-border bg-card text-foreground"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
         {error && <p className="text-sm text-danger">{error}</p>}
         <Button type="submit" disabled={isSubmitting} className="mt-2">
           {isSubmitting ? "제출 중..." : "지원하기"}
@@ -183,9 +212,11 @@ export default function PhotographerApplyPage() {
     undefined,
   );
   const [categories, setCategories] = useState<ShootCategory[]>([]);
+  const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
 
   useEffect(() => {
     apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
+    apiFetch<CaptureMode[]>("/capture-modes").then(setCaptureModes).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -263,6 +294,8 @@ export default function PhotographerApplyPage() {
           token={token}
           verified={profile.verificationStatus === "verified"}
           packages={profile.packages}
+          categories={categories}
+          captureModes={captureModes}
           onChange={(packages) => setProfile({ ...profile, packages })}
         />
         <AvailabilityManager photographerId={profile.id} token={token} />

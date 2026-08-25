@@ -17,6 +17,10 @@ export class CreatePackageDto {
   @MinLength(1)
   category: string;
 
+  @IsOptional()
+  @IsString()
+  captureModeCode?: string;
+
   @IsInt()
   @Min(1)
   durationMin: number;
