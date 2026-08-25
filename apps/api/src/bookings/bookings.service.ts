@@ -13,6 +13,7 @@ import { CreateConfirmationDto } from './dto/create-confirmation.dto';
 import { CreateRescheduleRequestDto } from './dto/create-reschedule-request.dto';
 import { RespondRescheduleDto } from './dto/respond-reschedule.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ContractsService } from '../contracts/contracts.service';
 
 const HOLD_DURATION_MS = 60 * 60 * 1000; // 견적확정 +1시간
 const DEPOSIT_RATE = 0.3;
@@ -33,6 +34,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly contracts: ContractsService,
   ) {}
 
   async create(customerId: string, dto: CreateBookingDto) {
@@ -392,6 +394,31 @@ export class BookingsService {
         where: { id: bookingId },
         data: bookingUpdate,
       });
+
+      // 이미 양측 서명이 끝난 계약서가 있다면 변경계약(새 버전)을 생성하고 재서명을 요구
+      const newVersion = await this.contracts.createNewVersion(
+        bookingId,
+        '일정 변경으로 인한 재계약',
+      );
+      if (newVersion && newVersion.version > 1) {
+        const photographerUserId = await this.otherPartyUserId(booking, 'customer');
+        await Promise.all([
+          this.notifications.create(
+            booking.customerId,
+            'reschedule_responded',
+            '계약서가 갱신되었어요',
+            '일정 변경으로 계약서가 새 버전으로 갱신되었어요. 다시 확인하고 서명해주세요.',
+            `/bookings/${bookingId}`,
+          ),
+          this.notifications.create(
+            photographerUserId,
+            'reschedule_responded',
+            '계약서가 갱신되었어요',
+            '일정 변경으로 계약서가 새 버전으로 갱신되었어요. 다시 확인하고 서명해주세요.',
+            `/bookings/${bookingId}`,
+          ),
+        ]);
+      }
     }
 
     return updated;

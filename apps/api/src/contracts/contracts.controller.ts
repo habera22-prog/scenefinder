@@ -24,4 +24,12 @@ export class ContractsController {
   ) {
     return this.contractsService.sign(bookingId, user.userId);
   }
+
+  @Get('history')
+  getHistory(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.contractsService.getHistory(bookingId, user.userId);
+  }
 }

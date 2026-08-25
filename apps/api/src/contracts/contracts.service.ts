@@ -102,7 +102,7 @@ export class ContractsService {
     }
     await this.assertParticipant(booking, userId);
 
-    const existing = await this.prisma.contract.findUnique({ where: { bookingId } });
+    const existing = await this.getActiveVersion(bookingId);
     if (existing) {
       return existing;
     }
@@ -116,8 +116,80 @@ export class ContractsService {
     return this.prisma.contract.create({
       data: {
         bookingId,
+        version: 1,
         content: buildContractContent(booking),
       },
+    });
+  }
+
+  async getHistory(bookingId: string, userId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { photographer: { select: { userId: true } } },
+    });
+    if (!booking) {
+      throw new NotFoundException('예약을 찾을 수 없습니다.');
+    }
+    await this.assertParticipant(booking, userId);
+
+    return this.prisma.contract.findMany({
+      where: { bookingId },
+      orderBy: { version: 'desc' },
+    });
+  }
+
+  // 이미 양측 서명이 끝난 계약이 있는 예약의 주요 조건(일정/장소/금액 등)이 변경될 때 호출 —
+  // 기존 계약서를 덮어쓰지 않고 새 버전을 만들어 재서명을 요구한다
+  async createNewVersion(bookingId: string, changeReason: string) {
+    const current = await this.getActiveVersion(bookingId);
+    if (!current) return null;
+    // 아직 양측 서명이 끝나지 않은 계약은 그대로 두고 최초 생성 시점 정보로 충분 — 버전업 불필요
+    if (!current.customerSignedAt || !current.photographerSignedAt) {
+      return current;
+    }
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        customer: { select: { name: true } },
+        photographer: {
+          select: {
+            photographerType: true,
+            businessName: true,
+            representativeName: true,
+            businessRegNo: true,
+            userId: true,
+            user: { select: { name: true } },
+          },
+        },
+        package: {
+          select: { title: true, includedPhotos: true, rawIncluded: true, deliveryDays: true },
+        },
+      },
+    });
+    if (!booking) return null;
+
+    await this.prisma.contract.update({
+      where: { id: current.id },
+      data: { status: 'superseded' },
+    });
+
+    return this.prisma.contract.create({
+      data: {
+        bookingId,
+        version: current.version + 1,
+        status: 'active',
+        changeReason,
+        previousVersionId: current.id,
+        content: buildContractContent(booking),
+      },
+    });
+  }
+
+  private getActiveVersion(bookingId: string) {
+    return this.prisma.contract.findFirst({
+      where: { bookingId, status: 'active' },
+      orderBy: { version: 'desc' },
     });
   }
 
@@ -131,13 +203,13 @@ export class ContractsService {
     }
     const side = await this.assertParticipant(booking, userId);
 
-    const contract = await this.prisma.contract.findUnique({ where: { bookingId } });
+    const contract = await this.getActiveVersion(bookingId);
     if (!contract) {
       throw new NotFoundException('계약서를 먼저 생성해주세요.');
     }
 
     return this.prisma.contract.update({
-      where: { bookingId },
+      where: { id: contract.id },
       data:
         side === 'customer'
           ? { customerSignedAt: new Date() }

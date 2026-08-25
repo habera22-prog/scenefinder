@@ -480,6 +480,10 @@ export interface AdminReview {
 export interface AppContract {
   id: string;
   bookingId: string;
+  version: number;
+  status: "active" | "superseded";
+  changeReason: string | null;
+  previousVersionId: string | null;
   content: string;
   customerSignedAt: string | null;
   photographerSignedAt: string | null;
