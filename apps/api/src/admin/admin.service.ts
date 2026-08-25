@@ -31,9 +31,12 @@ export class AdminService {
       where: status ? { verificationStatus: status } : undefined,
       select: {
         id: true,
+        photographerType: true,
         businessName: true,
         representativeName: true,
         businessRegNo: true,
+        activeRegions: true,
+        captureCapabilities: true,
         verificationStatus: true,
         createdAt: true,
         user: { select: { name: true, phone: true, email: true, status: true } },
@@ -156,6 +159,7 @@ export class AdminService {
         label: dto.label,
         sortOrder: dto.sortOrder ?? 0,
         minHourlyRate: dto.minHourlyRate,
+        businessOnly: dto.businessOnly ?? false,
       },
     });
   }
@@ -353,7 +357,13 @@ export class AdminService {
       include: {
         customer: { select: { name: true, phone: true, email: true } },
         photographer: {
-          select: { businessName: true, representativeName: true, businessRegNo: true },
+          select: {
+            photographerType: true,
+            businessName: true,
+            representativeName: true,
+            businessRegNo: true,
+            user: { select: { name: true } },
+          },
         },
         shootCategory: true,
         package: true,

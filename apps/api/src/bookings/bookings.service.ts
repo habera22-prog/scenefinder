@@ -58,6 +58,19 @@ export class BookingsService {
       );
     }
 
+    // BUSINESS 전용 촬영(카테고리 businessOnly 또는 세금계산서 필요)은 사업자 작가에게만 배정 가능
+    const shootCategory = await this.prisma.shootCategory.findUnique({
+      where: { id: dto.shootCategoryId },
+    });
+    if (
+      (shootCategory?.businessOnly || dto.taxInvoiceRequired) &&
+      photographer.photographerType !== 'business'
+    ) {
+      throw new BadRequestException(
+        '이 촬영은 사업자 인증 작가만 진행할 수 있어요. 다른 작가를 선택해주세요.',
+      );
+    }
+
     const booking = await this.prisma.booking.create({
       data: {
         customerId,
@@ -72,6 +85,7 @@ export class BookingsService {
         requiredScenes: dto.requiredScenes as
           | Prisma.InputJsonValue
           | undefined,
+        taxInvoiceRequired: dto.taxInvoiceRequired ?? false,
         status: 'inquiry',
         chatRoom: { create: {} },
       },
@@ -183,10 +197,12 @@ export class BookingsService {
         couponRedemption: { select: { couponId: true, discountAmount: true } },
         photographer: {
           select: {
+            photographerType: true,
             businessName: true,
             representativeName: true,
             businessRegNo: true,
             activeRegions: true,
+            user: { select: { name: true } },
           },
         },
       },

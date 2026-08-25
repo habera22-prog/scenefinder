@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Matches, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, Min, MinLength } from 'class-validator';
 
 export class CreateShootCategoryDto {
   @IsString()
@@ -20,4 +20,8 @@ export class CreateShootCategoryDto {
   @IsInt()
   @Min(0)
   minHourlyRate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  businessOnly?: boolean;
 }

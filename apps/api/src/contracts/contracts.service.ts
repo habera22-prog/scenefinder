@@ -19,9 +19,11 @@ function buildContractContent(booking: {
   balanceAmount: number | null;
   customer: { name: string };
   photographer: {
-    businessName: string;
-    representativeName: string;
-    businessRegNo: string;
+    photographerType: 'business' | 'freelancer';
+    businessName: string | null;
+    representativeName: string | null;
+    businessRegNo: string | null;
+    user: { name: string };
   };
   package: { title: string; includedPhotos: number; rawIncluded: boolean; deliveryDays: number } | null;
 }): string {
@@ -29,11 +31,16 @@ function buildContractContent(booking: {
     ? booking.shootDatetime.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
     : '미정';
 
+  const providerLine =
+    booking.photographer.photographerType === 'business'
+      ? `${booking.photographer.businessName} (대표자 ${booking.photographer.representativeName}, 사업자등록번호 ${booking.photographer.businessRegNo})`
+      : `${booking.photographer.user.name} (SceneFinder 인증 프리랜서 작가 — 사업자 미등록)`;
+
   return `# 촬영 서비스 계약서
 
 ## 1. 당사자
 - 고객: ${booking.customer.name}
-- 촬영 서비스 제공자(작가): ${booking.photographer.businessName} (대표자 ${booking.photographer.representativeName}, 사업자등록번호 ${booking.photographer.businessRegNo})
+- 촬영 서비스 제공자(작가): ${providerLine}
 
 ## 2. 촬영 정보
 - 일시: ${shootDate}
@@ -76,7 +83,14 @@ export class ContractsService {
       include: {
         customer: { select: { name: true } },
         photographer: {
-          select: { businessName: true, representativeName: true, businessRegNo: true, userId: true },
+          select: {
+            photographerType: true,
+            businessName: true,
+            representativeName: true,
+            businessRegNo: true,
+            userId: true,
+            user: { select: { name: true } },
+          },
         },
         package: {
           select: { title: true, includedPhotos: true, rawIncluded: true, deliveryDays: true },

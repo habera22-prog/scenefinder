@@ -65,6 +65,23 @@ function CategoryRow({
     }
   }
 
+  async function toggleBusinessOnly() {
+    setIsBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/admin/shoot-categories/${category.id}`, {
+        method: "PATCH",
+        token,
+        body: { businessOnly: !category.businessOnly },
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "처리에 실패했습니다.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -107,6 +124,12 @@ function CategoryRow({
           onClick={toggleActive}
         >
           {category.isActive ? "비활성화" : "활성화"}
+        </Button>
+        <Badge className={category.businessOnly ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground"}>
+          {category.businessOnly ? "사업자 전용" : "프리랜서 가능"}
+        </Badge>
+        <Button size="sm" variant="secondary" disabled={isBusy} onClick={toggleBusinessOnly}>
+          {category.businessOnly ? "사업자 전용 해제" : "사업자 전용으로 지정"}
         </Button>
       </div>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -35,9 +36,11 @@ export class PhotographersService {
     return this.prisma.photographer.create({
       data: {
         userId,
-        businessRegNo: dto.businessRegNo,
-        businessName: dto.businessName,
-        representativeName: dto.representativeName,
+        photographerType: dto.photographerType,
+        businessRegNo: dto.photographerType === 'business' ? dto.businessRegNo : null,
+        businessName: dto.photographerType === 'business' ? dto.businessName : null,
+        representativeName:
+          dto.photographerType === 'business' ? dto.representativeName : null,
         settlementAccount: dto.settlementAccount,
         settlementAccountHolder: dto.settlementAccountHolder,
         activeRegions: dto.activeRegions,
@@ -55,6 +58,11 @@ export class PhotographersService {
     });
     if (!photographer) {
       throw new NotFoundException('작가 지원 정보를 먼저 등록해주세요.');
+    }
+    if (photographer.photographerType !== 'business' || !photographer.businessRegNo) {
+      throw new BadRequestException(
+        '프리랜서 작가는 사업자 인증 절차가 필요 없습니다. 관리자 심사를 통해 SceneFinder 인증을 받아요.',
+      );
     }
 
     // TODO: 국세청 사업자등록정보 진위확인 API 연동 (PRD 3-6/3-12, 세무 검토 선행 필요)
@@ -86,6 +94,7 @@ export class PhotographersService {
       select: {
         id: true,
         businessName: true,
+        photographerType: true,
         representativeName: true,
         activeRegions: true,
         moodTags: true,
@@ -174,7 +183,16 @@ export class PhotographersService {
     return { id: dateId, deleted: true };
   }
 
-  search(query: SearchPhotographersQueryDto) {
+  async search(query: SearchPhotographersQueryDto) {
+    // 카테고리가 businessOnly로 지정된 분야면(기업/기관/브랜드 등) BUSINESS 유형 작가만 노출
+    let requiresBusiness = false;
+    if (query.category) {
+      const category = await this.prisma.shootCategory.findUnique({
+        where: { code: query.category },
+      });
+      requiresBusiness = category?.businessOnly ?? false;
+    }
+
     return this.prisma.photographer.findMany({
       where: {
         verificationStatus: 'verified',
@@ -183,16 +201,23 @@ export class PhotographersService {
         ...(query.captureMode
           ? { captureCapabilities: { has: query.captureMode } }
           : {}),
+        ...(requiresBusiness ? { photographerType: 'business' as const } : {}),
       },
       select: {
         id: true,
         businessName: true,
+        photographerType: true,
         activeRegions: true,
         moodTags: true,
         categories: true,
         captureCapabilities: true,
         avgRating: true,
         completedBookingsCount: true,
+        portfolios: {
+          take: 1,
+          orderBy: { sortOrder: 'asc' },
+          select: { imageUrl: true },
+        },
       },
       orderBy: { avgRating: 'desc' },
     });

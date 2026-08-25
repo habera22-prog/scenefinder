@@ -24,6 +24,9 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
   const { token } = useAuth();
   const [categories, setCategories] = useState<ShootCategory[]>([]);
   const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
+  const [photographerType, setPhotographerType] = useState<"business" | "freelancer">(
+    "business",
+  );
   const [businessRegNo, setBusinessRegNo] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [representativeName, setRepresentativeName] = useState("");
@@ -62,9 +65,10 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
         method: "POST",
         token,
         body: {
-          businessRegNo,
-          businessName,
-          representativeName,
+          photographerType,
+          ...(photographerType === "business"
+            ? { businessRegNo, businessName, representativeName }
+            : {}),
           settlementAccount,
           settlementAccountHolder,
           activeRegions: activeRegions.split(",").map((s) => s.trim()).filter(Boolean),
@@ -85,10 +89,36 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
     <Card className="p-6">
       <h1 className="mb-1 text-xl font-bold text-foreground">작가 지원하기</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        유료 촬영 상품을 등록하려면 사업자등록 정보가 필요해요. 포트폴리오만 먼저 올려두고 싶다면
-        아래 정보를 임시값으로 채워도 좋아요 — 유료 상품 등록 전에만 실제 정보로 갱신하면 됩니다.
+        사업자로 지원하거나, 사업자등록 없이 프리랜서로 지원할 수 있어요. 두 유형 모두
+        본인인증·계좌·포트폴리오 확인 후 관리자 승인이 있어야 활동할 수 있습니다.
       </p>
+      <div className="mb-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setPhotographerType("business")}
+          className={`flex-1 rounded-xl border p-3 text-sm font-medium ${
+            photographerType === "business"
+              ? "border-brand bg-brand-muted text-brand"
+              : "border-border bg-card text-foreground"
+          }`}
+        >
+          사업자로 지원
+        </button>
+        <button
+          type="button"
+          onClick={() => setPhotographerType("freelancer")}
+          className={`flex-1 rounded-xl border p-3 text-sm font-medium ${
+            photographerType === "freelancer"
+              ? "border-brand bg-brand-muted text-brand"
+              : "border-border bg-card text-foreground"
+          }`}
+        >
+          프리랜서로 지원
+        </button>
+      </div>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        {photographerType === "business" && (
+          <>
         <div>
           <Label htmlFor="businessRegNo">사업자등록번호</Label>
           <Input
@@ -119,6 +149,8 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
             />
           </div>
         </div>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="settlementAccount">정산계좌</Label>
@@ -262,15 +294,24 @@ export default function PhotographerApplyPage() {
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">{profile.businessName}</h1>
-          <p className="text-sm text-muted-foreground">{profile.representativeName}</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-foreground">
+              {profile.photographerType === "freelancer" ? user?.name : profile.businessName}
+            </h1>
+            <Badge className={profile.photographerType === "freelancer" ? "bg-sky-100 text-sky-700" : ""}>
+              {profile.photographerType === "freelancer" ? "프리랜서" : "사업자"}
+            </Badge>
+          </div>
+          {profile.photographerType === "business" && (
+            <p className="text-sm text-muted-foreground">{profile.representativeName}</p>
+          )}
         </div>
         <Badge className={profile.verificationStatus === "verified" ? "" : "bg-muted text-muted-foreground"}>
           {VERIFICATION_LABEL[profile.verificationStatus]}
         </Badge>
       </div>
 
-      {profile.verificationStatus !== "verified" && (
+      {profile.photographerType === "business" && profile.verificationStatus !== "verified" && (
         <Card className="mb-6 flex items-center justify-between p-4">
           <p className="text-sm text-muted-foreground">
             사업자등록번호 형식 확인 후 관리자 최종 승인이 진행됩니다.
@@ -278,6 +319,14 @@ export default function PhotographerApplyPage() {
           <Button size="sm" onClick={requestVerification}>
             사업자 인증 요청
           </Button>
+        </Card>
+      )}
+      {profile.photographerType === "freelancer" && profile.verificationStatus !== "verified" && (
+        <Card className="mb-6 p-4">
+          <p className="text-sm text-muted-foreground">
+            본인인증·계좌·포트폴리오 확인 후 관리자가 SceneFinder 인증 여부를 심사합니다. 별도로
+            요청하실 절차는 없어요.
+          </p>
         </Card>
       )}
 

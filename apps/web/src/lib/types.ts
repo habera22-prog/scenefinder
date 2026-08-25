@@ -17,6 +17,7 @@ export interface ShootCategory {
   isActive: boolean;
   sortOrder: number;
   minHourlyRate?: number | null;
+  businessOnly?: boolean;
 }
 
 export interface CaptureMode {
@@ -27,14 +28,19 @@ export interface CaptureMode {
   sortOrder: number;
 }
 
+export type PhotographerType = "business" | "freelancer";
+
 export interface PhotographerSummary {
   id: string;
-  businessName: string;
+  businessName: string | null;
+  photographerType?: PhotographerType;
   activeRegions: string[];
   moodTags: string[];
   categories: string[];
+  captureCapabilities?: string[];
   avgRating: number | null;
   completedBookingsCount: number;
+  portfolios?: { imageUrl: string }[];
 }
 
 export interface Portfolio {
@@ -62,7 +68,7 @@ export interface PackageItem {
 }
 
 export interface PhotographerProfile extends PhotographerSummary {
-  representativeName: string;
+  representativeName: string | null;
   verificationStatus: "pending" | "verified" | "rejected";
   responseTimeAvgMin: number | null;
   createdAt: string;
@@ -73,7 +79,7 @@ export interface PhotographerProfile extends PhotographerSummary {
 
 export interface MyPhotographerProfile extends PhotographerProfile {
   userId: string;
-  businessRegNo: string;
+  businessRegNo: string | null;
   settlementAccount: string;
   settlementAccountHolder: string;
 }
@@ -126,10 +132,12 @@ export interface Booking {
   rescheduleRequests?: RescheduleRequest[];
   couponRedemption?: { discountAmount: number; couponId: string } | null;
   photographer?: {
-    businessName: string;
-    representativeName: string;
-    businessRegNo: string;
+    photographerType: PhotographerType;
+    businessName: string | null;
+    representativeName: string | null;
+    businessRegNo: string | null;
     activeRegions: string[];
+    user?: { name: string };
   };
 }
 
@@ -295,9 +303,11 @@ export interface AdminBookingListItem {
 export interface AdminBookingDetail extends Omit<Booking, "customer" | "photographer"> {
   customer: { name: string; phone: string | null; email: string };
   photographer: {
-    businessName: string;
-    representativeName: string;
-    businessRegNo: string;
+    photographerType: PhotographerType;
+    businessName: string | null;
+    representativeName: string | null;
+    businessRegNo: string | null;
+    user?: { name: string };
   };
   payments: Payment[];
   cancellations: {
@@ -379,9 +389,12 @@ export interface AdminDashboard {
 
 export interface AdminPhotographer {
   id: string;
-  businessName: string;
-  representativeName: string;
-  businessRegNo: string;
+  photographerType: PhotographerType;
+  businessName: string | null;
+  representativeName: string | null;
+  businessRegNo: string | null;
+  activeRegions: string[];
+  captureCapabilities: string[];
   verificationStatus: "pending" | "verified" | "rejected";
   createdAt: string;
   user: { name: string; phone: string | null; email: string; status: string };

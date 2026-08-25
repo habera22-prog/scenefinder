@@ -7,15 +7,18 @@ export function PaymentDisclosure({
   payingAmount,
 }: {
   photographer: {
-    businessName: string;
-    representativeName: string;
-    businessRegNo: string;
+    photographerType: "business" | "freelancer";
+    businessName: string | null;
+    representativeName: string | null;
+    businessRegNo: string | null;
     activeRegions: string[];
+    user?: { name: string };
   };
   totalAmount: number;
   payingLabel: string;
   payingAmount: number;
 }) {
+  const isBusiness = photographer.photographerType === "business";
   return (
     <Card className="mb-3 p-4 text-sm">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -23,11 +26,17 @@ export function PaymentDisclosure({
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             촬영 서비스 제공자 (판매자)
           </p>
-          <p className="text-foreground">{photographer.businessName}</p>
-          <p className="text-muted-foreground">
-            대표자 {photographer.representativeName} · 사업자등록번호{" "}
-            {photographer.businessRegNo}
+          <p className="text-foreground">
+            {isBusiness ? photographer.businessName : photographer.user?.name}
           </p>
+          {isBusiness ? (
+            <p className="text-muted-foreground">
+              대표자 {photographer.representativeName} · 사업자등록번호{" "}
+              {photographer.businessRegNo}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">SceneFinder 인증 프리랜서 작가 (사업자 미등록)</p>
+          )}
           <p className="text-muted-foreground">
             활동지역 {photographer.activeRegions.join(", ")}
           </p>

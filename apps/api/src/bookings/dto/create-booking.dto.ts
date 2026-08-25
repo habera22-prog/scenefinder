@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsObject,
   IsOptional,
@@ -41,4 +42,8 @@ export class CreateBookingDto {
   @IsOptional()
   @IsObject()
   requiredScenes?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  taxInvoiceRequired?: boolean;
 }

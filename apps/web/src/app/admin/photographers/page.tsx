@@ -100,16 +100,37 @@ export default function AdminPhotographersPage() {
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {items.map((p) => (
+          {items.map((p) => {
+            const isBusiness = p.photographerType === "business";
+            const checklist = isBusiness
+              ? "본인인증 · 사업자정보 · 계좌 · 포트폴리오 · 활동지역 · 촬영방식"
+              : "본인인증 · 계좌 · 포트폴리오 · 활동지역 · 촬영방식";
+            return (
             <Card key={p.id} className="flex items-center justify-between p-4">
               <div>
-                <p className="font-medium text-foreground">
-                  {p.businessName} <span className="text-muted-foreground">· {p.representativeName}</span>
-                </p>
+                <div className="flex items-center gap-2">
+                  <Badge className={isBusiness ? "" : "bg-sky-100 text-sky-700"}>
+                    {isBusiness ? "사업자" : "프리랜서"}
+                  </Badge>
+                  <p className="font-medium text-foreground">
+                    {isBusiness ? p.businessName : p.user.name}
+                    {isBusiness && (
+                      <span className="text-muted-foreground"> · {p.representativeName}</span>
+                    )}
+                  </p>
+                </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  사업자번호 {p.businessRegNo} · {p.user.name} ({p.user.phone ?? "-"}) ·{" "}
+                  {isBusiness
+                    ? `사업자번호 ${p.businessRegNo} · `
+                    : "사업자 미등록(프리랜서) · "}
+                  {p.user.name} ({p.user.phone ?? "-"}) ·{" "}
                   {new Date(p.createdAt).toLocaleDateString("ko-KR")} 신청
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  활동지역 {p.activeRegions.join(", ") || "미등록"} · 촬영방식{" "}
+                  {p.captureCapabilities.join(", ") || "미등록"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">심사 항목: {checklist}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge>{STATUS_LABEL[p.verificationStatus]}</Badge>
@@ -134,7 +155,8 @@ export default function AdminPhotographersPage() {
                 )}
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
