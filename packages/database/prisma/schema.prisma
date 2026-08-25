@@ -33,6 +33,29 @@ enum VerificationStatus {
   rejected
 }
 
+enum PhotographerType {
+  business
+  freelancer
+}
+
+enum DealType {
+  standard
+  custom_contract
+  partnership
+}
+
+enum InquiryStatus {
+  received
+  reviewing
+  matched
+  closed
+}
+
+enum ContractStatus {
+  active
+  superseded
+}
+
 enum BookingStatus {
   inquiry
   quoted
@@ -207,14 +230,16 @@ model User {
 model Photographer {
   id                      String             @id @default(uuid()) @db.Uuid
   userId                  String             @unique @map("user_id") @db.Uuid
-  businessRegNo           String             @map("business_reg_no") // 사업자등록번호 — 필수, 미등록 시 유료상품 등록 불가
-  businessName            String             @map("business_name")
-  representativeName      String             @map("representative_name")
-  settlementAccount       String             @map("settlement_account") // 암호화 저장
+  photographerType        PhotographerType   @default(business) @map("photographer_type") // BUSINESS: 사업자등록 필수 / FREELANCER: 사업자등록 없이 활동 (둘 다 관리자 승인 필수)
+  businessRegNo           String?            @map("business_reg_no") // 사업자등록번호 — BUSINESS만 필수(FREELANCER는 null)
+  businessName            String?            @map("business_name") // BUSINESS만 필수
+  representativeName      String?            @map("representative_name") // BUSINESS만 필수
+  settlementAccount       String             @map("settlement_account") // 암호화 저장 — 유형 무관 필수
   settlementAccountHolder String             @map("settlement_account_holder") // 사업자명과 일치 검증
   activeRegions           String[]           @map("active_regions")
   moodTags                String[]           @map("mood_tags")
   categories              String[]
+  captureCapabilities     String[]           @default([]) @map("capture_capabilities") // 작가가 수행 가능한 촬영 방식(capture_modes.code), categories와 동일한 느슨한 문자열 배열
   verificationStatus      VerificationStatus @default(pending) @map("verification_status")
   isNewPhotographer       Boolean            @default(true) @map("is_new_photographer") // 정산 유보 특례 대상 여부(첫 3건)
   completedBookingsCount  Int                @default(0) @map("completed_bookings_count")
@@ -274,16 +299,35 @@ model Favorite {
 // ─────────────────────────────────────────────
 
 model ShootCategory {
-  id        String  @id @default(uuid()) @db.Uuid
-  code      String  @unique // 예: 'event','family','couple','travel','sports','profile','brand','senior_tour'
-  label     String // 화면 노출용 한글명 (예: "시니어 투어")
-  isActive  Boolean @default(true) @map("is_active")
-  sortOrder Int     @default(0) @map("sort_order")
+  id            String  @id @default(uuid()) @db.Uuid
+  code          String  @unique // 예: 'event','family','couple','travel','sports','profile','brand','senior_tour'
+  label         String // 화면 노출용 한글명 (예: "시니어 투어")
+  isActive      Boolean @default(true) @map("is_active")
+  sortOrder     Int     @default(0) @map("sort_order")
+  minHourlyRate Int?    @map("min_hourly_rate") // 관리자가 정하는 분야별 시간당 최저가(원). null=제한 없음. 저가 신고를 통한 수수료 회피 방지 목적
+  businessOnly  Boolean @default(false) @map("business_only") // true면 BUSINESS 유형 작가만 매칭 가능(기업/기관/브랜드 등)
 
   portfolios Portfolio[]
   bookings   Booking[]
 
   @@map("shoot_categories")
+}
+
+// ─────────────────────────────────────────────
+// 2-3-1. capture_modes (촬영 방식 — 촬영 종류와 분리된 확장 가능한 설정 테이블)
+// 사진/드론/영상 및 그 조합을 하드코딩하지 않고 이 테이블로 관리
+// ─────────────────────────────────────────────
+
+model CaptureMode {
+  id        String  @id @default(uuid()) @db.Uuid
+  code      String  @unique // 예: 'photo','drone','video','photo_drone','photo_video','drone_video','all'
+  label     String // 화면 노출용 한글명 (예: "사진 + 드론")
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  bookings Booking[]
+
+  @@map("capture_modes")
 }
 
 // ─────────────────────────────────────────────
@@ -312,13 +356,14 @@ model Package {
   photographerId String  @map("photographer_id") @db.Uuid
   title          String // 예: "행사 베이직"
   category       String
+  captureModeCode String? @map("capture_mode_code") // 촬영 방식(capture_modes.code) — category와 동일하게 느슨한 문자열 매칭, null=미지정
   durationMin    Int     @map("duration_min")
   basePrice      Int     @map("base_price")
   includedPhotos Int     @map("included_photos")
   retouchScope   String? @map("retouch_scope")
   rawIncluded    Boolean @map("raw_included")
   deliveryDays   Int     @map("delivery_days")
-  options        Json? // 추가옵션(시간연장/2인배치/드론 등) 가격 목록
+  options        Json? // 추가옵션(시간연장/2인배치 등) 가격 목록 — 드론/영상은 capture_mode_code로 이동
 
   photographer Photographer @relation(fields: [photographerId], references: [id])
   bookings     Booking[]
@@ -336,12 +381,15 @@ model Booking {
   photographerId  String        @map("photographer_id") @db.Uuid
   packageId       String?       @map("package_id") @db.Uuid // 맞춤 견적인 경우 null
   status          BookingStatus @default(inquiry)
+  dealType        DealType      @default(standard) @map("deal_type") // 일반 예약은 항상 standard — CUSTOM_CONTRACT/PARTNERSHIP은 별도 문의 테이블로 처리, 확장을 위한 자리
   shootCategoryId String        @map("shoot_category_id") @db.Uuid // 촬영종류(행사/가족/시니어 투어 등, 확장형)
+  captureModeId   String?       @map("capture_mode_id") @db.Uuid // 촬영방식(사진/드론/영상 등) — null=미지정
   shootDatetime   DateTime?     @map("shoot_datetime")
   location        String?
   headcount       Int?
   purpose         String?
   requiredScenes  Json?         @map("required_scenes") // 필수 촬영 장면
+  taxInvoiceRequired Boolean    @default(false) @map("tax_invoice_required") // true면 BUSINESS 유형 작가만 배정 가능(세금계산서 발행 필요)
   totalAmount     Int?          @map("total_amount")
   depositAmount   Int?          @map("deposit_amount") // 총액의 30%
   balanceAmount   Int?          @map("balance_amount")
@@ -354,6 +402,7 @@ model Booking {
   photographer   Photographer          @relation("PhotographerBookings", fields: [photographerId], references: [id])
   package        Package?              @relation(fields: [packageId], references: [id])
   shootCategory  ShootCategory         @relation(fields: [shootCategoryId], references: [id])
+  captureMode    CaptureMode?          @relation(fields: [captureModeId], references: [id])
   chatRoom       ChatRoom?
   confirmations  BookingConfirmation[]
   payments       Payment[]
@@ -365,7 +414,7 @@ model Booking {
   settlementItem SettlementItem?
   supportTickets SupportTicket[]
   rescheduleRequests RescheduleRequest[]
-  contract       Contract?
+  contracts      Contract[]
   couponRedemption CouponRedemption?
 
   @@map("bookings")
@@ -588,15 +637,22 @@ model Consent {
 // ─────────────────────────────────────────────
 
 model Contract {
-  id                   String    @id @default(uuid()) @db.Uuid
-  bookingId            String    @unique @map("booking_id") @db.Uuid
+  id                   String         @id @default(uuid()) @db.Uuid
+  bookingId            String         @map("booking_id") @db.Uuid
+  version              Int            @default(1) // 예약당 여러 버전 — 일정 변경 등으로 서명 후 조건이 바뀌면 새 버전 생성
+  status               ContractStatus @default(active) @map("status") // active=현재 유효 버전, superseded=이전 버전(변경계약으로 대체됨)
+  changeReason         String?        @map("change_reason") // 새 버전 생성 이유(예: "일정 변경으로 인한 재계약")
+  previousVersionId    String?        @map("previous_version_id") @db.Uuid
   content              String // 생성 시점의 계약 조건 스냅샷(마크다운 텍스트)
-  customerSignedAt     DateTime? @map("customer_signed_at")
-  photographerSignedAt DateTime? @map("photographer_signed_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
+  customerSignedAt     DateTime?      @map("customer_signed_at")
+  photographerSignedAt DateTime?      @map("photographer_signed_at")
+  createdAt            DateTime       @default(now()) @map("created_at")
 
-  booking Booking @relation(fields: [bookingId], references: [id])
+  booking         Booking    @relation(fields: [bookingId], references: [id])
+  previousVersion Contract?  @relation("ContractVersionHistory", fields: [previousVersionId], references: [id])
+  nextVersions    Contract[] @relation("ContractVersionHistory")
 
+  @@unique([bookingId, version])
   @@map("contracts")
 }
 
@@ -620,6 +676,54 @@ model SupportTicket {
   booking Booking? @relation(fields: [bookingId], references: [id])
 
   @@map("support_tickets")
+}
+
+// ─────────────────────────────────────────────
+// 2-16-1. corporate_inquiries (기업/기관 맞춤촬영 문의 — 비회원도 제출 가능)
+// 일반 예약(Booking) 흐름과 분리 — 관리자가 검토 후 작가/촬영팀을 별도로 구성
+// ─────────────────────────────────────────────
+
+model CorporateInquiry {
+  id                 String        @id @default(uuid()) @db.Uuid
+  companyName        String        @map("company_name")
+  contactName        String        @map("contact_name")
+  phone              String
+  email              String
+  shootDate          DateTime?     @map("shoot_date")
+  location           String?
+  purpose            String?
+  captureModeCode    String?       @map("capture_mode_code")
+  expectedDurationMin Int?         @map("expected_duration_min")
+  expectedHeadcount  Int?          @map("expected_headcount")
+  deliverableUsage   String?       @map("deliverable_usage")
+  budgetRange        String?       @map("budget_range")
+  taxInvoiceRequired Boolean       @default(false) @map("tax_invoice_required")
+  notes              String?
+  status             InquiryStatus @default(received)
+  adminMemo          String?       @map("admin_memo")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  @@map("corporate_inquiries")
+}
+
+// ─────────────────────────────────────────────
+// 2-16-2. partnership_inquiries (제휴·파트너 문의 — 비회원도 제출 가능)
+// ─────────────────────────────────────────────
+
+model PartnershipInquiry {
+  id               String        @id @default(uuid()) @db.Uuid
+  companyName      String        @map("company_name")
+  contactName      String        @map("contact_name")
+  phone            String
+  email            String
+  companyType      String        @map("company_type") // 예: 여행사/행사대행사/호텔/웨딩업체/스튜디오/드론업체/촬영업체/광고마케팅업체
+  collaborationType String?      @map("collaboration_type")
+  proposal         String
+  status           InquiryStatus @default(received)
+  adminMemo        String?       @map("admin_memo")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@map("partnership_inquiries")
 }
 
 // ─────────────────────────────────────────────
