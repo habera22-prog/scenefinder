@@ -28,7 +28,7 @@
   --color-brand-muted: var(--brand-muted);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-pretendard), "Pretendard", -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 

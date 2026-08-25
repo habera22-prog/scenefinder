@@ -12,18 +12,17 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-lg font-bold tracking-tight text-foreground">
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.png" alt="" className="h-8 w-8" />
             씬파인더
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
             <Link href="/navigator" className="hover:text-foreground">
-              촬영 찾기
+              작가 찾기
             </Link>
             <Link href="/photographers" className="hover:text-foreground">
               사진작가
-            </Link>
-            <Link href="/signup?role=photographer" className="hover:text-foreground">
-              작가 지원
             </Link>
             <Link href="/pages/how-to-use" className="hover:text-foreground">
               이용방법
@@ -107,6 +106,12 @@ export function Header() {
             </>
           ) : (
             <>
+              <Link
+                href="/signup?role=photographer"
+                className="hidden text-xs text-muted-foreground hover:text-foreground sm:inline"
+              >
+                작가로 지원하기
+              </Link>
               <Link href="/login">
                 <Button variant="ghost" size="sm">
                   로그인
