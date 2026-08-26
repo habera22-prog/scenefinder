@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx playwright *)",
+      "Bash(node \"C:\\\\Users\\\\현\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--dev-scenefinder\\\\134a0e23-aaf7-4f34-908f-2ae2780dd2be\\\\scratchpad\\\\shot.js\")"
+    ]
+  }
+}
