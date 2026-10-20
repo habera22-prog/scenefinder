@@ -32,7 +32,7 @@ function ResultsList() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== "customer") return;
+    if (!user || user.role === "admin") return;
     apiFetch<FavoriteItem[]>("/customers/me/favorites", { token })
       .then((favorites) => setFavoriteIds(new Set(favorites.map((f) => f.photographer.id))))
       .catch(() => {});

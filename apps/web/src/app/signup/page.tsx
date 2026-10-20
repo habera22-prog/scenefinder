@@ -1,19 +1,21 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { KakaoLoginButton } from "@/components/auth/KakaoLoginButton";
 
 type Role = "customer" | "photographer";
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signup, verifyOtp } = useAuth();
+  const { signup, signupWithKakao, verifyOtp } = useAuth();
+  const isKakaoSignup = searchParams.get("kakao") === "1";
 
   const [step, setStep] = useState<"form" | "otp">("form");
   const [role, setRole] = useState<Role>(
@@ -23,17 +25,53 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [kakaoTicket, setKakaoTicket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isKakaoSignup) return;
+    const timer = window.setTimeout(() => {
+      setKakaoTicket(window.sessionStorage.getItem("scenefinder.kakao-ticket"));
+      const rawProfile = window.sessionStorage.getItem("scenefinder.kakao-profile");
+      if (!rawProfile) return;
+      try {
+        const profile = JSON.parse(rawProfile) as {
+          name?: string;
+          email?: string | null;
+        };
+        if (profile.name) setName((current) => current || profile.name || "");
+        if (profile.email) setEmail((current) => current || profile.email || "");
+      } catch {
+        window.sessionStorage.removeItem("scenefinder.kakao-profile");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isKakaoSignup]);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
-      await signup({ role, name, email, phone });
+      if (isKakaoSignup && kakaoTicket) {
+        await signupWithKakao({ ticket: kakaoTicket, role, name, email, phone });
+      } else if (isKakaoSignup) {
+        setError("카카오 로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
+        return;
+      } else {
+        await signup({ role, name, email, phone });
+      }
+      if (isKakaoSignup) {
+        window.sessionStorage.removeItem("scenefinder.kakao-ticket");
+        window.sessionStorage.removeItem("scenefinder.kakao-profile");
+      }
       setStep("otp");
     } catch (err) {
+      if (isKakaoSignup && kakaoTicket && err instanceof ApiError && err.status === 409) {
+        router.push("/login?kakaoLink=1");
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "가입 요청에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
@@ -45,7 +83,7 @@ function SignupForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const user = await verifyOtp(phone, code);
+      const { user } = await verifyOtp(phone, code);
       router.push(user.role === "photographer" ? "/photographers/apply" : "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "인증에 실패했습니다.");
@@ -138,6 +176,17 @@ function SignupForm() {
           </form>
         )}
       </Card>
+
+      {!isKakaoSignup && (
+        <>
+          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            또는
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <KakaoLoginButton preferredRole={role} />
+        </>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         이미 계정이 있으신가요?{" "}

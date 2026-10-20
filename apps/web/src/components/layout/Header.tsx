@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
@@ -7,6 +9,22 @@ import { NotificationBell } from "./NotificationBell";
 
 export function Header() {
   const { user, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const [selectedMode, setSelectedMode] = useState<{
+    userId: string;
+    mode: "customer" | "photographer";
+  } | null>(null);
+  const mode =
+    user?.role === "photographer" && selectedMode?.userId === user.id
+      ? selectedMode.mode
+      : "customer";
+
+  function toggleMode() {
+    if (!user || user.role !== "photographer") return;
+    const nextMode = mode === "customer" ? "photographer" : "customer";
+    setSelectedMode({ userId: user.id, mode: nextMode });
+    router.push(nextMode === "customer" ? "/" : "/photographers/apply");
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur">
@@ -36,10 +54,10 @@ export function Header() {
         <div className="flex items-center gap-3">
           {isLoading ? null : user ? (
             <>
-              {user.role === "customer" && (
+              {user.role !== "admin" && mode === "customer" && (
                 <>
                   <Link
-                    href="/me/bookings"
+                    href="/me/bookings?role=customer"
                     className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
                   >
                     내 예약
@@ -58,13 +76,13 @@ export function Header() {
                   </Link>
                 </>
               )}
-              {user.role === "photographer" && (
+              {user.role === "photographer" && mode === "photographer" && (
                 <>
                   <Link
-                    href="/me/bookings"
+                    href="/me/bookings?role=photographer"
                     className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline"
                   >
-                    예약 관리
+                    작가 예약
                   </Link>
                   <Link
                     href="/photographers/apply"
@@ -96,11 +114,23 @@ export function Header() {
                   고객센터
                 </Link>
               )}
+              {user.role === "photographer" && (
+                <Button variant="secondary" size="sm" onClick={toggleMode}>
+                  {mode === "customer" ? "작가 화면으로 전환" : "고객으로 전환하기"}
+                </Button>
+              )}
               <NotificationBell />
               <span className="hidden text-sm text-muted-foreground sm:inline">
                 {user.name}님
               </span>
-              <Button variant="ghost" size="sm" onClick={logout}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedMode(null);
+                  logout();
+                }}
+              >
                 로그아웃
               </Button>
             </>

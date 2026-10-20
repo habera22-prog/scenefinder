@@ -45,6 +45,43 @@ async function main() {
     });
   }
   console.log(`Seeded ${captureModes.length} capture modes.`);
+
+  // Development-only admin account. It is opt-in so normal and production seeds
+  // never create a privileged account by default.
+  if (process.env.SEED_LOCAL_ADMIN === 'true') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SEED_LOCAL_ADMIN cannot be used in production.');
+    }
+
+    const phone = '01099998888';
+    const email = 'admin@scenefinder.local';
+    const adminByEmail = await prisma.user.findUnique({ where: { email } });
+    const existingByPhone = await prisma.user.findFirst({ where: { phone } });
+
+    if (existingByPhone && existingByPhone.id !== adminByEmail?.id) {
+      throw new Error(
+        'The local admin test phone is already assigned to another account.',
+      );
+    }
+
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        role: 'admin',
+        name: 'SceneFinder 관리자',
+        phone,
+        status: 'active',
+      },
+      create: {
+        role: 'admin',
+        name: 'SceneFinder 관리자',
+        email,
+        phone,
+        status: 'active',
+      },
+    });
+    console.log(`Seeded local admin account for ${phone}.`);
+  }
 }
 
 main()

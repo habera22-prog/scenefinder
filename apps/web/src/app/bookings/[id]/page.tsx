@@ -211,6 +211,8 @@ export default function BookingRoomPage() {
     );
   }
 
+  const isCustomerSide = booking.customerId === user?.id;
+  const isPhotographerSide = Boolean(user && !isCustomerSide);
   const contactVisible = booking.chatRoom?.contactDisclosed ?? false;
 
   return (
@@ -314,7 +316,7 @@ export default function BookingRoomPage() {
           </h3>
           {actionError && <p className="mb-2 text-sm text-danger">{actionError}</p>}
 
-          {booking.status === "inquiry" && user?.role === "photographer" && (
+          {booking.status === "inquiry" && isPhotographerSide && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="quote-amount">견적 금액(원)</Label>
               <Input
@@ -345,7 +347,7 @@ export default function BookingRoomPage() {
               </Button>
             </div>
           )}
-          {booking.status === "inquiry" && user?.role === "customer" && (
+          {booking.status === "inquiry" && isCustomerSide && (
             <p className="text-sm text-muted-foreground">작가의 견적을 기다리고 있어요.</p>
           )}
 
@@ -356,10 +358,10 @@ export default function BookingRoomPage() {
                 {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
                 {booking.balanceAmount?.toLocaleString()}원
               </p>
-              {user?.role === "customer" && (
+              {isCustomerSide && (
                 <CouponApply booking={booking} token={token} onDone={loadBooking} />
               )}
-              {user?.role === "customer" ? (
+              {isCustomerSide ? (
                 <Button disabled={isBusy} onClick={acceptQuote}>
                   견적 수락하기
                 </Button>
@@ -370,7 +372,7 @@ export default function BookingRoomPage() {
           )}
 
           {booking.status === "held" &&
-            user?.role === "customer" &&
+            isCustomerSide &&
             booking.photographer &&
             booking.totalAmount !== null && (
               <>
@@ -389,7 +391,7 @@ export default function BookingRoomPage() {
             )}
 
           {booking.status === "deposit_paid" &&
-            user?.role === "customer" &&
+            isCustomerSide &&
             booking.photographer &&
             booking.totalAmount !== null && (
               <>
@@ -407,23 +409,23 @@ export default function BookingRoomPage() {
               </>
             )}
 
-          {booking.status === "confirmed" && user?.role === "photographer" && (
+          {booking.status === "confirmed" && isPhotographerSide && (
             <Button disabled={isBusy} onClick={markComplete} className="w-full">
               촬영완료 처리하기
             </Button>
           )}
-          {booking.status === "confirmed" && user?.role === "customer" && (
+          {booking.status === "confirmed" && isCustomerSide && (
             <p className="text-sm text-muted-foreground">작가가 촬영을 진행할 예정이에요.</p>
           )}
 
-          {booking.status === "completed" && user?.role === "photographer" && (
+          {booking.status === "completed" && isPhotographerSide && (
             <PhotoUploadAction bookingId={booking.id} token={token} onDone={loadBooking} />
           )}
-          {booking.status === "completed" && user?.role === "customer" && (
+          {booking.status === "completed" && isCustomerSide && (
             <p className="text-sm text-muted-foreground">작가가 사진을 준비 중이에요.</p>
           )}
 
-          {booking.status === "delivered" && user?.role === "customer" && (
+          {booking.status === "delivered" && isCustomerSide && (
             <div className="flex flex-col gap-2">
               <p className="text-sm text-muted-foreground">
                 사진이 도착했어요. 확인 후 후기를 남겨주세요.
@@ -438,11 +440,11 @@ export default function BookingRoomPage() {
               )}
             </div>
           )}
-          {booking.status === "delivered" && user?.role === "photographer" && (
+          {booking.status === "delivered" && isPhotographerSide && (
             <p className="text-sm text-muted-foreground">고객의 납품 확인을 기다리고 있어요.</p>
           )}
 
-          {booking.status === "closed" && user?.role !== "customer" && (
+          {booking.status === "closed" && isPhotographerSide && (
             <p className="text-sm text-muted-foreground">
               거래가 종료되었습니다. 이용해주셔서 감사합니다.
             </p>
@@ -458,7 +460,7 @@ export default function BookingRoomPage() {
             <RescheduleAction
               bookingId={booking.id}
               token={token}
-              side={user.role === "photographer" ? "photographer" : "customer"}
+              side={isCustomerSide ? "customer" : "photographer"}
               pending={
                 booking.rescheduleRequests?.find((r) => r.status === "pending") ?? null
               }
@@ -470,13 +472,13 @@ export default function BookingRoomPage() {
             <CancelBookingAction
               bookingId={booking.id}
               token={token}
-              initiatedBy={user.role === "photographer" ? "photographer" : "customer"}
+              initiatedBy={isCustomerSide ? "customer" : "photographer"}
               onCancelled={loadBooking}
             />
           )}
         </Card>
 
-        {booking.status === "closed" && user?.role === "customer" && (
+        {booking.status === "closed" && isCustomerSide && (
           <ReviewForm bookingId={booking.id} token={token} />
         )}
 
@@ -488,7 +490,7 @@ export default function BookingRoomPage() {
           <ContractView
             bookingId={booking.id}
             token={token}
-            side={user.role === "photographer" ? "photographer" : "customer"}
+            side={isCustomerSide ? "customer" : "photographer"}
           />
         )}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { BookingListItem, BookingStatus } from "@/lib/types";
@@ -22,10 +22,15 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   disputed: "분쟁 중",
 };
 
-export default function MyBookingsPage() {
+function MyBookingsContent() {
   const { user, token, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [bookings, setBookings] = useState<BookingListItem[] | null>(null);
+  const searchParams = useSearchParams();
+  const view = searchParams.get("role") === "photographer" ? "photographer" : "customer";
+  const [result, setResult] = useState<{
+    view: "customer" | "photographer";
+    bookings: BookingListItem[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,13 +39,26 @@ export default function MyBookingsPage() {
       router.push("/login");
       return;
     }
-    const role = user.role === "photographer" ? "photographer" : "customer";
-    apiFetch<BookingListItem[]>(`/bookings?role=${role}`, { token })
-      .then(setBookings)
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "예약 목록을 불러오지 못했습니다."),
-      );
-  }, [authLoading, user, token, router]);
+    let active = true;
+    apiFetch<BookingListItem[]>(`/bookings?role=${view}`, { token })
+      .then((bookings) => {
+        if (active) {
+          setError(null);
+          setResult({ view, bookings });
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof ApiError ? err.message : "예약 목록을 불러오지 못했습니다.");
+          setResult({ view, bookings: [] });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [authLoading, user, token, router, view]);
+
+  const bookings = result?.view === view ? result.bookings : null;
 
   if (authLoading || bookings === null) {
     return (
@@ -52,7 +70,29 @@ export default function MyBookingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
-      <h1 className="mb-6 text-xl font-bold text-foreground">내 예약</h1>
+      <h1 className="mb-2 text-xl font-bold text-foreground">
+        {view === "customer" ? "내 예약" : "작가 예약 관리"}
+      </h1>
+      {user?.role === "photographer" && (
+        <div className="mb-6 flex gap-2" role="group" aria-label="예약 종류 선택">
+          <button
+            type="button"
+            onClick={() => router.push("/me/bookings?role=customer")}
+            aria-pressed={view === "customer"}
+            className={`rounded-lg px-3 py-2 text-sm font-medium ${view === "customer" ? "bg-brand text-white" : "bg-muted text-foreground"}`}
+          >
+            고객으로 예약한 내역
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/me/bookings?role=photographer")}
+            aria-pressed={view === "photographer"}
+            className={`rounded-lg px-3 py-2 text-sm font-medium ${view === "photographer" ? "bg-brand text-white" : "bg-muted text-foreground"}`}
+          >
+            작가로 받은 예약
+          </button>
+        </div>
+      )}
       {error && <p className="text-sm text-danger">{error}</p>}
       {bookings.length === 0 && (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -86,5 +126,13 @@ export default function MyBookingsPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function MyBookingsPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 py-24 text-center">불러오는 중...</div>}>
+      <MyBookingsContent />
+    </Suspense>
   );
 }

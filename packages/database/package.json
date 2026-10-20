@@ -8,10 +8,10 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "studio": "prisma studio",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "prisma db seed"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "./node_modules/.bin/ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.10.0"

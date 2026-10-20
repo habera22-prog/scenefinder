@@ -198,6 +198,10 @@ enum CouponDiscountType {
   percent
 }
 
+enum AuthProvider {
+  kakao
+}
+
 // ─────────────────────────────────────────────
 // 2-1. users (공통 회원)
 // ─────────────────────────────────────────────
@@ -214,6 +218,7 @@ model User {
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   photographer   Photographer?
+  socialAccounts SocialAccount[]
   bookings       Booking[]       @relation("CustomerBookings")
   messages       Message[]
   favorites      Favorite[]
@@ -221,6 +226,20 @@ model User {
   notifications  Notification[]
 
   @@map("users")
+}
+
+model SocialAccount {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  provider       AuthProvider
+  providerUserId String       @map("provider_user_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@map("social_accounts")
 }
 
 // ─────────────────────────────────────────────

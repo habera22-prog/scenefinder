@@ -19,7 +19,7 @@ export function PortfolioManager({
   photographerId,
   token,
   categories,
-  portfolios,
+  portfolios = [],
   onChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -36,12 +36,31 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
   const [moodTags, setMoodTags] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [optionsError, setOptionsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
-    apiFetch<CaptureMode[]>("/capture-modes").then(setCaptureModes).catch(() => {});
+    let active = true;
+    Promise.all([
+      apiFetch<ShootCategory[]>("/shoot-categories"),
+      apiFetch<CaptureMode[]>("/capture-modes"),
+    ])
+      .then(([categoryOptions, captureOptions]) => {
+        if (!active) return;
+        setCategories(categoryOptions);
+        setCaptureModes(captureOptions);
+      })
+      .catch(() => {
+        if (active) setOptionsError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoadingOptions(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   function toggleCategory(code: string) {
@@ -59,6 +78,10 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (selectedCategories.length === 0 || selectedCapabilities.length === 0) {
+      setError("전문 분야와 촬영 방식을 각각 하나 이상 선택해주세요.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const profile = await apiFetch<MyPhotographerProfile>("/photographers/apply", {
@@ -191,7 +214,7 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
           />
         </div>
         <div>
-          <Label>전문 분야</Label>
+          <Label>전문 분야 (하나 이상 선택)</Label>
           <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
               <button
@@ -208,9 +231,22 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
               </button>
             ))}
           </div>
+          {isLoadingOptions && (
+            <p className="mt-2 text-sm text-muted-foreground">전문 분야를 불러오는 중이에요.</p>
+          )}
+          {!isLoadingOptions && optionsError && (
+            <p className="mt-2 text-sm text-danger" role="alert">
+              전문 분야 목록을 불러오지 못했어요. 페이지를 새로고침해 주세요.
+            </p>
+          )}
+          {!isLoadingOptions && !optionsError && categories.length === 0 && (
+            <p className="mt-2 text-sm text-danger" role="alert">
+              선택할 전문 분야가 아직 등록되지 않았어요.
+            </p>
+          )}
         </div>
         <div>
-          <Label>촬영 방식 (가능한 방식을 모두 선택)</Label>
+          <Label>촬영 방식 (하나 이상 선택)</Label>
           <div className="flex flex-wrap gap-2">
             {captureModes.map((m) => (
               <button
@@ -227,9 +263,26 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
               </button>
             ))}
           </div>
+          {isLoadingOptions && (
+            <p className="mt-2 text-sm text-muted-foreground">촬영 방식을 불러오는 중이에요.</p>
+          )}
+          {!isLoadingOptions && optionsError && (
+            <p className="mt-2 text-sm text-danger" role="alert">
+              촬영 방식 목록을 불러오지 못했어요. 페이지를 새로고침해 주세요.
+            </p>
+          )}
+          {!isLoadingOptions && !optionsError && captureModes.length === 0 && (
+            <p className="mt-2 text-sm text-danger" role="alert">
+              선택할 촬영 방식이 아직 등록되지 않았어요.
+            </p>
+          )}
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
-        <Button type="submit" disabled={isSubmitting} className="mt-2">
+        <Button
+          type="submit"
+          disabled={isSubmitting || isLoadingOptions || optionsError || categories.length === 0 || captureModes.length === 0}
+          className="mt-2"
+        >
           {isSubmitting ? "제출 중..." : "지원하기"}
         </Button>
       </form>

@@ -44,7 +44,7 @@ export default function PhotographerProfilePage() {
   }, [params.id]);
 
   useEffect(() => {
-    if (!user || user.role !== "customer") return;
+    if (!user || user.role === "admin") return;
     apiFetch<FavoriteItem[]>("/customers/me/favorites", { token })
       .then((favorites) =>
         setIsFavorited(favorites.some((f) => f.photographer.id === params.id)),

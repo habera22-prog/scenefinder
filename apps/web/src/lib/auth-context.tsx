@@ -18,6 +18,16 @@ interface StoredAuth {
   user: AuthUser;
 }
 
+interface KakaoProfile {
+  name: string;
+  email: string | null;
+  role: "customer" | "photographer" | null;
+}
+
+type KakaoCompleteResult =
+  | { requiresSignup: true; ticket: string; profile: KakaoProfile }
+  | { requiresSignup: false; user: AuthUser };
+
 interface AuthContextValue {
   token: string | null;
   user: AuthUser | null;
@@ -28,8 +38,21 @@ interface AuthContextValue {
     email: string;
     phone: string;
   }) => Promise<{ userId: string; message: string }>;
+  signupWithKakao: (input: {
+    ticket: string;
+    role: "customer" | "photographer";
+    name: string;
+    email: string;
+    phone: string;
+  }) => Promise<{ userId: string; message: string }>;
+  startKakaoLogin: (preferredRole?: "customer" | "photographer") => Promise<string>;
+  completeKakaoLogin: (ticket: string) => Promise<KakaoCompleteResult>;
+  linkKakaoAccount: (ticket: string, accessToken: string) => Promise<void>;
   requestLoginOtp: (phone: string) => Promise<{ message: string }>;
-  verifyOtp: (phone: string, code: string) => Promise<AuthUser>;
+  verifyOtp: (
+    phone: string,
+    code: string,
+  ) => Promise<{ user: AuthUser; accessToken: string }>;
   logout: () => void;
 }
 
@@ -41,17 +64,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as StoredAuth;
-        setToken(parsed.token);
-        setUser(parsed.user);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
+    const timer = window.setTimeout(() => {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as StoredAuth;
+          setToken(parsed.token);
+          setUser(parsed.user);
+        } catch {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const persist = useCallback((next: StoredAuth | null) => {
@@ -80,6 +106,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const signupWithKakao = useCallback(
+    (input: {
+      ticket: string;
+      role: "customer" | "photographer";
+      name: string;
+      email: string;
+      phone: string;
+    }) =>
+      apiFetch<{ userId: string; message: string }>("/auth/kakao/signup", {
+        method: "POST",
+        body: input,
+      }),
+    [],
+  );
+
+  const startKakaoLogin = useCallback(async (preferredRole?: "customer" | "photographer") => {
+    const path = preferredRole
+      ? `/auth/kakao?role=${encodeURIComponent(preferredRole)}`
+      : "/auth/kakao";
+    const result = await apiFetch<{ authorizationUrl: string }>(path);
+    return result.authorizationUrl;
+  }, []);
+
+  const completeKakaoLogin = useCallback(
+    async (ticket: string): Promise<KakaoCompleteResult> => {
+      const result = await apiFetch<
+        | {
+            requiresSignup: true;
+            ticket: string;
+            profile: KakaoProfile;
+          }
+        | {
+            requiresSignup: false;
+            accessToken: string;
+            user: AuthUser;
+          }
+      >("/auth/kakao/complete", { method: "POST", body: { ticket } });
+
+      if (result.requiresSignup) return result;
+      persist({ token: result.accessToken, user: result.user });
+      return { requiresSignup: false, user: result.user };
+    },
+    [persist],
+  );
+
+  const linkKakaoAccount = useCallback(
+    async (ticket: string, accessToken: string) => {
+      await apiFetch("/auth/kakao/link", {
+        method: "POST",
+        token: accessToken,
+        body: { ticket },
+      });
+    },
+    [],
+  );
+
   const requestLoginOtp = useCallback(
     (phone: string) =>
       apiFetch<{ message: string }>("/auth/login", {
@@ -96,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         { method: "POST", body: { phone, code } },
       );
       persist({ token: result.accessToken, user: result.user });
-      return result.user;
+      return result;
     },
     [persist],
   );
@@ -104,8 +186,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => persist(null), [persist]);
 
   const value = useMemo(
-    () => ({ token, user, isLoading, signup, requestLoginOtp, verifyOtp, logout }),
-    [token, user, isLoading, signup, requestLoginOtp, verifyOtp, logout],
+    () => ({
+      token,
+      user,
+      isLoading,
+      signup,
+      signupWithKakao,
+      startKakaoLogin,
+      completeKakaoLogin,
+      linkKakaoAccount,
+      requestLoginOtp,
+      verifyOtp,
+      logout,
+    }),
+    [
+      token,
+      user,
+      isLoading,
+      signup,
+      signupWithKakao,
+      startKakaoLogin,
+      completeKakaoLogin,
+      linkKakaoAccount,
+      requestLoginOtp,
+      verifyOtp,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

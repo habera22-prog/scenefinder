@@ -49,6 +49,13 @@ export class PhotographersService {
         captureCapabilities: dto.captureCapabilities,
         verificationStatus: 'pending',
       },
+      include: {
+        portfolios: {
+          include: { category: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        packages: true,
+      },
     });
   }
 

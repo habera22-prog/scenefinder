@@ -21,7 +21,7 @@ export function PackageManager({
   photographerId,
   token,
   verified,
-  packages,
+  packages = [],
   categories,
   captureModes,
   onChange,
