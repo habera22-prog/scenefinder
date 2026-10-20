@@ -1,6 +1,6 @@
 # 씬파인더(SceneFinder) — DB 스키마 & API 명세 (MVP, v0.1)
 
-> PRD v0.2 및 이용약관 초안에서 확정한 정책(에스크로 결제, 사업자 작가만 허용, 예약금 30%/수수료 15~20%, 취소수수료 10%+실비, 정산 보호 권한 등)을 기준으로 설계했습니다.
+> 초기 설계 초안입니다. 현재 정책은 PRD v0.3을 기준으로 하며 승인된 사업자·프리랜서 작가 모두 유료 활동이 가능합니다. 프리랜서 원천징수액을 별도로 기록·정산하는 스키마는 아직 구현되지 않았으므로 실결제 정산 전에 보완해야 합니다.
 
 ---
 
@@ -46,15 +46,16 @@ erDiagram
 |---|---|---|
 | id | uuid PK | |
 | user_id | uuid FK → users.id | |
-| business_reg_no | varchar | 사업자등록번호 — **필수, 미등록 시 유료상품 등록 불가** |
-| business_name | varchar | 상호 |
-| representative_name | varchar | 대표자명 |
-| settlement_account | varchar (암호화) | 정산계좌 |
-| settlement_account_holder | varchar | 예금주(사업자명과 일치 검증) |
+| photographer_type | enum('business','freelancer') | 작가 유형. 승인된 두 유형 모두 유료 활동 가능 |
+| business_reg_no | varchar nullable | 사업자등록번호 — 사업자 작가만 필수 |
+| business_name | varchar nullable | 상호 — 사업자 작가만 필수 |
+| representative_name | varchar nullable | 대표자명 — 사업자 작가만 필수 |
+| settlement_account | varchar | 정산계좌 — 유형 무관 필수 (현재 저장값 암호화 미구현) |
+| settlement_account_holder | varchar | 예금주 확인값 |
 | active_regions | varchar[] | 활동 지역 |
 | mood_tags | varchar[] | 분위기 태그 |
 | categories | varchar[] | 전문 촬영 분야 |
-| verification_status | enum('pending','verified','rejected') | 사업자 인증 상태 |
+| verification_status | enum('pending','verified','rejected') | 관리자 심사 상태 |
 | is_new_photographer | boolean | 정산 유보 특례 대상 여부(첫 3건) |
 | completed_bookings_count | int | |
 | avg_rating | decimal | |
@@ -190,7 +191,8 @@ erDiagram
 | platform_fee | int | 15~20% |
 | pg_fee | int | |
 | deduction_amount | int | 작가 귀책 환불·보상·차지백 상계액 |
-| net_amount | int | 최종 지급액 |
+| net_amount | int | 현재 구현의 최종 지급액. 원천징수액은 별도 기록하지 않음 |
+| withholding_tax_amount | int (추가 필요) | 법령상 원천징수 대상인 경우 세액 기록. 라이브 프리랜서 정산 전에 스키마·계산·명세서 반영 필요 |
 
 ### 2-12. `deliveries` / `revision_requests`
 | deliveries | | |

@@ -1,4 +1,4 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export class ApiError extends Error {
@@ -81,7 +81,7 @@ export async function downloadFile(
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function uploadFile(

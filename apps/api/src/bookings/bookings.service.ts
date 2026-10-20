@@ -97,7 +97,7 @@ export class BookingsService {
       'booking_created',
       '새 촬영 문의',
       `${dto.location}에서의 촬영 문의가 도착했어요.`,
-      `/bookings/${booking.id}`,
+      `/bookings/${booking.id}?role=photographer`,
     );
 
     return booking;
@@ -113,9 +113,9 @@ export class BookingsService {
         '해당 예약의 담당 작가만 견적을 제시할 수 있습니다.',
       );
     }
-    if (booking.status !== 'inquiry') {
+    if (booking.status !== 'inquiry' && booking.status !== 'quoted') {
       throw new BadRequestException(
-        '문의 상태의 예약만 견적을 제시할 수 있습니다.',
+        '고객이 견적을 수락하기 전까지만 견적을 보내거나 수정할 수 있어요.',
       );
     }
 
@@ -130,8 +130,8 @@ export class BookingsService {
       dto.depositAmount ?? Math.round(dto.totalAmount * DEPOSIT_RATE);
     const balanceAmount = dto.totalAmount - depositAmount;
 
-    const updated = await this.prisma.booking.update({
-      where: { id: bookingId },
+    const update = await this.prisma.booking.updateMany({
+      where: { id: bookingId, status: { in: ['inquiry', 'quoted'] } },
       data: {
         status: 'quoted',
         totalAmount: dto.totalAmount,
@@ -140,13 +140,20 @@ export class BookingsService {
         holdExpiresAt: new Date(Date.now() + HOLD_DURATION_MS),
       },
     });
+    if (!update.count)
+      throw new BadRequestException(
+        '예약 상태가 변경됐어요. 새로고침한 뒤 확인해주세요.',
+      );
+    const updated = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
 
     await this.notifications.create(
       booking.customerId,
       'quote_received',
       '견적이 도착했어요',
       `총 ${dto.totalAmount.toLocaleString()}원의 견적이 제시되었어요.`,
-      `/bookings/${bookingId}`,
+      `/bookings/${bookingId}?role=customer`,
     );
 
     return updated;
@@ -325,7 +332,7 @@ export class BookingsService {
       'reschedule_requested',
       '일정 변경 요청',
       '상대방이 촬영 일정 변경을 요청했어요.',
-      `/bookings/${bookingId}`,
+      `/bookings/${bookingId}?role=${side === 'customer' ? 'photographer' : 'customer'}`,
     );
 
     return created;
@@ -364,7 +371,7 @@ export class BookingsService {
         'reschedule_responded',
         '일정 변경 거절됨',
         '요청한 일정 변경이 거절되었어요.',
-        `/bookings/${bookingId}`,
+        `/bookings/${bookingId}?role=${pending.requestedBy}`,
       );
       return rejected;
     }
@@ -378,7 +385,7 @@ export class BookingsService {
       'reschedule_responded',
       '일정 변경 승인됨',
       '요청한 일정 변경이 승인되었어요.',
-      `/bookings/${bookingId}`,
+      `/bookings/${bookingId}?role=${pending.requestedBy}`,
     );
 
     const bookingUpdate: Prisma.BookingUpdateInput = {};
@@ -416,14 +423,14 @@ export class BookingsService {
             'reschedule_responded',
             '계약서가 갱신되었어요',
             '일정 변경으로 계약서가 새 버전으로 갱신되었어요. 다시 확인하고 서명해주세요.',
-            `/bookings/${bookingId}`,
+            `/bookings/${bookingId}?role=customer`,
           ),
           this.notifications.create(
             photographerUserId,
             'reschedule_responded',
             '계약서가 갱신되었어요',
             '일정 변경으로 계약서가 새 버전으로 갱신되었어요. 다시 확인하고 서명해주세요.',
-            `/bookings/${bookingId}`,
+            `/bookings/${bookingId}?role=photographer`,
           ),
         ]);
       }

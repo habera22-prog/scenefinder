@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApplyPhotographerDto } from './dto/apply-photographer.dto';
 import { SearchPhotographersQueryDto } from './dto/search-photographers-query.dto';
 import { AddAvailabilityDto } from './dto/add-availability.dto';
+import { UpdatePhotographerDto } from './dto/update-photographer.dto';
 import {
   photographerSummarySelect,
   toPhotographerSummary,
@@ -39,6 +40,23 @@ export class PhotographersService {
     if (existing) {
       throw new ConflictException('이미 작가 지원 정보가 등록되어 있습니다.');
     }
+    const selectedCategories = await this.prisma.shootCategory.findMany({
+      where: { code: { in: dto.categories }, isActive: true },
+    });
+    const selectedModes = await this.prisma.captureMode.count({
+      where: { code: { in: dto.captureCapabilities }, isActive: true },
+    });
+    if (
+      selectedCategories.length !== new Set(dto.categories).size ||
+      selectedCategories.some(
+        (c) => c.businessOnly && dto.photographerType !== 'business',
+      ) ||
+      selectedModes !== new Set(dto.captureCapabilities).size
+    ) {
+      throw new BadRequestException(
+        '활동 가능한 전문 분야와 촬영 방식을 선택해주세요. 기업 전용 분야는 사업자 작가만 지원할 수 있어요.',
+      );
+    }
 
     // TODO: settlementAccount는 스키마상 암호화 저장 대상 — 현재는 평문 저장(추후 KMS 등 연동 필요)
     return this.prisma.photographer.create({
@@ -60,6 +78,7 @@ export class PhotographersService {
         verificationStatus: 'pending',
       },
       include: {
+        user: { select: { name: true } },
         portfolios: {
           include: { category: true },
           orderBy: { sortOrder: 'asc' },
@@ -154,7 +173,7 @@ export class PhotographersService {
   }
 
   async getByUserId(userId: string) {
-    return this.prisma.photographer.findUnique({
+    const photographer = await this.prisma.photographer.findUnique({
       where: { userId },
       include: {
         portfolios: {
@@ -162,8 +181,117 @@ export class PhotographersService {
           orderBy: { sortOrder: 'asc' },
         },
         packages: true,
+        user: { select: { name: true } },
       },
     });
+    if (!photographer) return null;
+    return {
+      ...photographer,
+      displayName: photographer.businessName?.trim() || photographer.user.name,
+      avgRating:
+        photographer.avgRating === null ? null : Number(photographer.avgRating),
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdatePhotographerDto) {
+    const photographer = await this.prisma.photographer.findUnique({
+      where: { userId },
+      include: { packages: true },
+    });
+    if (!photographer)
+      throw new NotFoundException('작가 프로필을 먼저 등록해주세요.');
+    if (
+      [
+        dto.businessName,
+        dto.settlementAccount,
+        dto.settlementAccountHolder,
+      ].some((value) => value !== undefined && !value.trim()) ||
+      (dto.activeRegions && !dto.activeRegions.some((region) => region.trim()))
+    )
+      throw new BadRequestException(
+        '작가명, 활동 지역과 정산 정보는 공백으로 저장할 수 없어요.',
+      );
+    if (dto.categories) {
+      const categories = await this.prisma.shootCategory.findMany({
+        where: { code: { in: dto.categories }, isActive: true },
+      });
+      if (
+        categories.length !== dto.categories.length ||
+        categories.some(
+          (c) => c.businessOnly && photographer.photographerType !== 'business',
+        )
+      ) {
+        throw new BadRequestException(
+          '활동 가능한 촬영 분야를 선택해주세요. 기업 전용 분야는 사업자 작가만 선택할 수 있어요.',
+        );
+      }
+      if (
+        photographer.packages.some(
+          (pkg) => !dto.categories!.includes(pkg.category),
+        )
+      ) {
+        throw new BadRequestException(
+          '촬영 상품이 등록된 분야는 먼저 해당 상품을 수정하거나 삭제한 뒤 제외해주세요.',
+        );
+      }
+    }
+    if (dto.captureCapabilities) {
+      const modes = await this.prisma.captureMode.count({
+        where: { code: { in: dto.captureCapabilities }, isActive: true },
+      });
+      if (modes !== dto.captureCapabilities.length)
+        throw new BadRequestException('유효한 촬영 방식을 선택해주세요.');
+      const available = new Set(
+        dto.captureCapabilities.flatMap(captureRequirements),
+      );
+      if (
+        photographer.packages.some(
+          (pkg) =>
+            pkg.captureModeCode &&
+            !captureRequirements(pkg.captureModeCode).every((part) =>
+              available.has(part),
+            ),
+        )
+      ) {
+        throw new BadRequestException(
+          '촬영 상품에 사용 중인 방식은 먼저 해당 상품을 수정한 뒤 제외해주세요.',
+        );
+      }
+    }
+    await this.prisma.photographer.update({
+      where: { userId },
+      data: {
+        ...dto,
+        ...(dto.businessName ? { businessName: dto.businessName.trim() } : {}),
+        ...(dto.activeRegions
+          ? {
+              activeRegions: [
+                ...new Set(
+                  dto.activeRegions
+                    .map((region) => region.trim())
+                    .filter(Boolean),
+                ),
+              ],
+            }
+          : {}),
+        ...(dto.moodTags
+          ? {
+              moodTags: [
+                ...new Set(
+                  dto.moodTags.map((tag) => tag.trim()).filter(Boolean),
+                ),
+              ],
+            }
+          : {}),
+        ...(dto.settlementAccount
+          ? { settlementAccount: dto.settlementAccount.trim() }
+          : {}),
+        ...(dto.settlementAccountHolder
+          ? { settlementAccountHolder: dto.settlementAccountHolder.trim() }
+          : {}),
+      },
+    });
+    return this.getByUserId(userId);
   }
 
   async listUnavailableDates(photographerId: string) {
@@ -189,6 +317,21 @@ export class PhotographersService {
     if (!photographer) {
       throw new NotFoundException('작가 프로필을 먼저 등록해주세요.');
     }
+    const start = new Date(`${dto.date.slice(0, 10)}T00:00:00+09:00`);
+    const reserved = await this.prisma.booking.findFirst({
+      where: {
+        photographerId: photographer.id,
+        status: { in: ['held', 'deposit_paid', 'confirmed'] },
+        shootDatetime: {
+          gte: start,
+          lt: new Date(start.getTime() + 86_400_000),
+        },
+      },
+    });
+    if (reserved)
+      throw new BadRequestException(
+        '예약이 있는 날짜예요. 예약 일정을 변경한 뒤 휴무일로 등록해주세요.',
+      );
     const existing = await this.prisma.photographerAvailability.findUnique({
       where: {
         photographerId_date: {

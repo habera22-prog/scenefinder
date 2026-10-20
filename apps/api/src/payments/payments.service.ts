@@ -135,7 +135,7 @@ export class PaymentsService {
         'payment_completed',
         payment.type === 'deposit' ? '예약금 결제 완료' : '잔금 결제 완료',
         `${payment.amount.toLocaleString()}원이 결제되었어요.`,
-        `/bookings/${payment.bookingId}`,
+        `/bookings/${payment.bookingId}?role=photographer`,
       );
     }
 

@@ -3,6 +3,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { BookingDeliveriesController } from './deliveries.controller';
 import { DeliveryActionsController } from './revisions.controller';
 import { MyDeliveriesController } from './my-deliveries.controller';
+import { SharedDeliveriesController } from './shared-deliveries.controller';
 import { DeliveriesService } from './deliveries.service';
 import { AutoConfirmDeliveryJob } from './auto-confirm.job';
 import { DownloadExpiryReminderJob } from './download-expiry-reminder.job';
@@ -13,6 +14,7 @@ import { DownloadExpiryReminderJob } from './download-expiry-reminder.job';
     BookingDeliveriesController,
     DeliveryActionsController,
     MyDeliveriesController,
+    SharedDeliveriesController,
   ],
   providers: [
     DeliveriesService,

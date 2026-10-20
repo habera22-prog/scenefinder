@@ -49,7 +49,7 @@ export class DisputesService {
         'dispute_filed',
         '분쟁이 접수되었어요',
         `${dto.type} 관련 분쟁이 접수되었어요.`,
-        `/bookings/${bookingId}`,
+        `/bookings/${bookingId}?role=${raisedBy === 'customer' ? 'photographer' : 'customer'}`,
       );
     }
 

@@ -60,7 +60,23 @@ export function NotificationBell() {
       setUnreadCount((c) => Math.max(0, c - 1));
     }
     setOpen(false);
-    if (n.link) router.push(n.link);
+    if (n.type === "delivery_ready") {
+      const notificationUrl = n.link
+        ? new URL(n.link, window.location.origin)
+        : null;
+      const deliveryId = notificationUrl?.searchParams.get("deliveryId");
+      const bookingId = notificationUrl?.pathname.match(
+        /^\/bookings\/([^/]+)$/,
+      )?.[1];
+      const query = deliveryId
+        ? `deliveryId=${encodeURIComponent(deliveryId)}`
+        : bookingId
+          ? `bookingId=${encodeURIComponent(bookingId)}`
+          : "";
+      router.push(`/me/photos${query ? `?${query}` : ""}`);
+    } else if (n.link) {
+      router.push(n.link);
+    }
   }
 
   async function handleMarkAllRead() {

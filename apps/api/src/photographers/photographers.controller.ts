@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -15,6 +16,7 @@ import { PhotographersService } from './photographers.service';
 import { ApplyPhotographerDto } from './dto/apply-photographer.dto';
 import { SearchPhotographersQueryDto } from './dto/search-photographers-query.dto';
 import { AddAvailabilityDto } from './dto/add-availability.dto';
+import { UpdatePhotographerDto } from './dto/update-photographer.dto';
 
 @Controller('photographers')
 export class PhotographersController {
@@ -49,6 +51,15 @@ export class PhotographersController {
   @Get('me')
   getMyProfile(@CurrentUser() user: AuthenticatedUser) {
     return this.photographersService.getByUserId(user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMyProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdatePhotographerDto,
+  ) {
+    return this.photographersService.updateProfile(user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)

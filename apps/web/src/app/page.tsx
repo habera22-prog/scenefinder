@@ -36,48 +36,59 @@ export default function Home() {
   const labels = Object.fromEntries(categories.map((c) => [c.code, c.label]));
 
   return (
-    <div className="mx-auto w-full max-w-[640px] space-y-9 px-5 pt-9 pb-10">
-      <section aria-labelledby="home-title">
-        <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-text)]">
-          <Icon name="camera" className="h-4 w-4" />
-          좋은 순간, 좋은 작가와
-        </p>
-        <h1
-          id="home-title"
-          className="text-[30px] leading-[1.35] font-bold tracking-tight sm:text-4xl"
-        >
-          남기고 싶은 순간에
-          <br />딱 맞는 사진작가를 찾아요
-        </h1>
-        <p className="mt-4 text-[17px] leading-relaxed text-[var(--muted-foreground)]">
-          가족의 웃음부터 특별한 행사까지.
-          <br />
-          마음에 드는 작품을 보고, 편하게 문의하세요.
-        </p>
-        <div className="mt-6 overflow-hidden rounded-2xl">
+    <div className="mx-auto w-full max-w-[640px] space-y-9 px-5 pt-9 pb-10 lg:max-w-[1200px] lg:space-y-16 lg:px-8 lg:pt-14 lg:pb-16">
+      <section
+        aria-labelledby="home-title"
+        className="lg:grid lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-x-12"
+      >
+        <div className="lg:col-start-1 lg:row-start-1">
+          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-text)]">
+            <Icon name="camera" className="h-4 w-4" />
+            좋은 순간, 좋은 작가와
+          </p>
+          <h1
+            id="home-title"
+            className="text-[30px] leading-[1.35] font-bold tracking-tight sm:text-4xl lg:text-[38px] xl:text-[42px]"
+          >
+            남기고 싶은 순간에
+            <br />딱 맞는 사진작가를 찾아요
+          </h1>
+          <p className="mt-4 text-[17px] leading-relaxed text-[var(--muted-foreground)]">
+            가족의 웃음부터 특별한 행사까지.
+            <br />
+            마음에 드는 작품을 보고, 편하게 문의하세요.
+          </p>
+        </div>
+        <div className="mt-6 overflow-hidden rounded-2xl lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:rounded-3xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/hero.png"
             alt="해 질 무렵 바다와 산을 따라 이어지는 산책길"
-            className="aspect-[2/1] w-full object-cover object-center"
+            className="aspect-[2/1] w-full object-cover object-center lg:aspect-[4/3]"
             fetchPriority="high"
           />
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <Link href="/navigator" className={buttonStyles("primary", "lg")}>
-            <Icon name="search" />내 촬영에 맞는 작가 찾기
-          </Link>
-          <Link
-            href="/photographers"
-            className={buttonStyles("secondary", "lg")}
-          >
-            작품 보며 직접 둘러보기
-            <Icon name="arrow" className="h-4 w-4" />
-          </Link>
+        <div className="lg:col-start-1 lg:row-start-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:mt-7 lg:flex lg:flex-wrap">
+            <Link
+              href="/navigator"
+              className={`${buttonStyles("primary", "lg")} lg:px-5 lg:text-base`}
+            >
+              <Icon name="search" />내 촬영에 맞는 작가 찾기
+            </Link>
+            <Link
+              href="/photographers"
+              className={`${buttonStyles("secondary", "lg")} lg:px-5 lg:text-base`}
+            >
+              <span className="lg:hidden">작품 보며 직접 둘러보기</span>
+              <span className="hidden lg:inline">작가 둘러보기</span>
+              <Icon name="arrow" className="h-4 w-4" />
+            </Link>
+          </div>
+          <p className="mt-3 text-center text-xs text-[var(--muted-foreground)] lg:text-left">
+            로그인 없이 작품과 가격을 둘러볼 수 있어요
+          </p>
         </div>
-        <p className="mt-3 text-center text-xs text-[var(--muted-foreground)]">
-          로그인 없이 작품과 가격을 둘러볼 수 있어요
-        </p>
       </section>
 
       {categories.length > 0 && (
@@ -85,12 +96,12 @@ export default function Home() {
           <h2 id="category-title" className="text-xl font-bold">
             어떤 순간을 남기고 싶으세요?
           </h2>
-          <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5">
+          <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5 lg:mt-6 lg:grid-cols-10 lg:gap-3">
             {categories.map((category) => (
               <Link
                 key={category.id}
                 href={`/photographers?category=${encodeURIComponent(category.code)}`}
-                className="sf-card-hover flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] px-1 py-4"
+                className="sf-card-hover flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] px-1 py-4 lg:gap-3 lg:py-5"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-muted)] text-[var(--brand-text)]">
                   <Icon
@@ -127,19 +138,19 @@ export default function Home() {
         </div>
         {photographers === null ? (
           <div
-            className="mt-4 grid grid-cols-2 gap-4"
+            className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4"
             role="status"
             aria-label="작가를 불러오는 중"
           >
-            {[0, 1].map((n) => (
+            {[0, 1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="h-72 animate-pulse rounded-2xl bg-[var(--card)]"
+                className={`h-72 animate-pulse rounded-2xl bg-[var(--card)] ${n > 1 ? "hidden lg:block" : ""}`}
               />
             ))}
           </div>
         ) : photographers.length > 0 ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:mt-6 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4">
             {photographers.map((p) => (
               <PhotographerCard
                 key={p.id}
@@ -169,7 +180,7 @@ export default function Home() {
         <h2 id="how-title" className="text-xl font-bold">
           처음 예약해도 어렵지 않아요
         </h2>
-        <Card className="mt-4 space-y-6 p-5 sm:p-6">
+        <Card className="mt-4 space-y-6 p-5 sm:p-6 lg:mt-6 lg:grid lg:grid-cols-3 lg:gap-8 lg:space-y-0 lg:p-8">
           {[
             {
               icon: "photo" as const,
@@ -187,7 +198,10 @@ export default function Home() {
               detail: "촬영 범위와 금액을 확인한 뒤 예약을 진행해요.",
             },
           ].map((item, i) => (
-            <div key={item.title} className="flex items-start gap-4">
+            <div
+              key={item.title}
+              className="flex items-start gap-4 lg:flex-col"
+            >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-muted)] text-[var(--brand-text)]">
                 <Icon name={item.icon} />
               </span>
@@ -214,7 +228,7 @@ export default function Home() {
 
       <Link
         href="/business-inquiry"
-        className="sf-card-hover flex items-center justify-between gap-4 rounded-2xl bg-[var(--brand-muted)] p-5"
+        className="sf-card-hover flex items-center justify-between gap-4 rounded-2xl bg-[var(--brand-muted)] p-5 lg:px-8 lg:py-6"
       >
         <div>
           <p className="font-semibold">기업·브랜드 촬영을 준비하고 있나요?</p>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -27,7 +28,11 @@ export default function RootLayout({
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <AuthProvider>
-          <Header />
+          <Suspense
+            fallback={<div className="h-14 bg-[var(--card)] lg:h-18" />}
+          >
+            <Header />
+          </Suspense>
           <main className="flex flex-1 flex-col">{children}</main>
           <Footer />
         </AuthProvider>

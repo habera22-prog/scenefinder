@@ -62,7 +62,13 @@ const STATUS_LABEL: Record<string, string> = {
 export default function BookingRoomPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, token, isLoading: authLoading } = useAuth();
+  const {
+    user,
+    token,
+    isLoading: authLoading,
+    workspaceMode,
+    setWorkspaceMode,
+  } = useAuth();
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -81,6 +87,7 @@ export default function BookingRoomPage() {
   const [isBusy, setIsBusy] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState("");
   const [quoteDurationMin, setQuoteDurationMin] = useState("");
+  const [showQuoteEditor, setShowQuoteEditor] = useState(false);
   const messagesPaneRef = useRef<HTMLDivElement>(null);
   const followMessagesRef = useRef(true);
 
@@ -89,6 +96,20 @@ export default function BookingRoomPage() {
     try {
       const data = await apiFetch<Booking>(`/bookings/${params.id}`, { token });
       setBooking(data);
+      if (user?.role === "photographer") {
+        const requestedRole = new URLSearchParams(
+          window.location.search,
+        ).get("role");
+        const nextMode =
+          requestedRole === "photographer"
+            ? "photographer"
+            : requestedRole === "customer" && data.customerId === user.id
+              ? "customer"
+              : data.customerId === user.id
+                ? workspaceMode
+                : "photographer";
+        setWorkspaceMode(nextMode);
+      }
       setError(null);
     } catch (err) {
       setError(
@@ -97,7 +118,7 @@ export default function BookingRoomPage() {
           : "예약 정보를 불러오지 못했습니다.",
       );
     }
-  }, [params.id, token]);
+  }, [params.id, token, user, workspaceMode, setWorkspaceMode]);
 
   const loadMessages = useCallback(async () => {
     if (!token) return;
@@ -115,7 +136,9 @@ export default function BookingRoomPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      rememberAuthReturn(`/bookings/${params.id}`);
+      rememberAuthReturn(
+        `/bookings/${params.id}${window.location.search}`,
+      );
       router.push("/login");
       return;
     }
@@ -179,6 +202,7 @@ export default function BookingRoomPage() {
           durationMin: quoteDurationMin ? Number(quoteDurationMin) : undefined,
         },
       });
+      setShowQuoteEditor(false);
     });
   }
 
@@ -270,7 +294,9 @@ export default function BookingRoomPage() {
     );
   }
 
-  const isCustomerSide = booking.customerId === user?.id;
+  const isCustomerSide =
+    booking.customerId === user?.id &&
+    !(user?.role === "photographer" && workspaceMode === "photographer");
   const isPhotographerSide = Boolean(user && !isCustomerSide);
   const contactVisible = booking.chatRoom?.contactDisclosed ?? false;
 
@@ -299,13 +325,14 @@ export default function BookingRoomPage() {
               <h2 className="font-semibold">촬영 상담 메시지</h2>
             </div>
             <div
+              id="booking-chat"
               ref={messagesPaneRef}
               onScroll={(event) => {
                 const pane = event.currentTarget;
                 followMessagesRef.current =
                   pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
               }}
-              className="flex h-96 flex-col gap-2 overflow-y-auto p-4"
+              className="scroll-mt-20 flex h-96 flex-col gap-2 overflow-y-auto p-4"
             >
               {messages.length === 0 && (
                 <p className="my-auto text-center text-sm leading-relaxed text-[var(--muted-foreground)]">
@@ -346,6 +373,56 @@ export default function BookingRoomPage() {
                 전송
               </Button>
             </form>
+            {(booking.status === "inquiry" ||
+              (booking.status === "quoted" && showQuoteEditor)) &&
+              isPhotographerSide && (
+                <div className="flex flex-col gap-2 border-t border-border p-4">
+                  <h3 className="font-semibold">
+                    {booking.status === "quoted"
+                      ? "견적 수정·다시 보내기"
+                      : "고객에게 견적 보내기"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {booking.status === "quoted"
+                      ? "금액을 고친 뒤 다시 보내면 고객에게 알림이 가요."
+                      : "고객과 촬영 조건을 상담한 뒤 견적 금액을 입력해주세요."}
+                  </p>
+                  <Label htmlFor="quote-amount">견적 금액(원)</Label>
+                  <Input
+                    id="quote-amount"
+                    type="number"
+                    value={quoteAmount}
+                    onChange={(e) => setQuoteAmount(e.target.value)}
+                  />
+                  {!booking.packageId && (
+                    <>
+                      <Label htmlFor="quote-duration">촬영 시간(분)</Label>
+                      <Input
+                        id="quote-duration"
+                        type="number"
+                        value={quoteDurationMin}
+                        onChange={(e) => setQuoteDurationMin(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        상품 없는 맞춤 견적은 분야별 시간당 최저가 검증을 위해
+                        촬영 시간이 필요해요.
+                      </p>
+                    </>
+                  )}
+                  <Button
+                    disabled={
+                      isBusy ||
+                      !quoteAmount ||
+                      (!booking.packageId && !quoteDurationMin)
+                    }
+                    onClick={submitQuote}
+                  >
+                    {booking.status === "quoted"
+                      ? "견적 다시 보내기"
+                      : "견적 보내기"}
+                  </Button>
+                </div>
+              )}
           </Card>
         </div>
 
@@ -430,46 +507,64 @@ export default function BookingRoomPage() {
             <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               다음 단계
             </h3>
+            {isPhotographerSide &&
+              [
+                "inquiry",
+                "quoted",
+                "held",
+                "deposit_paid",
+                "confirmed",
+              ].includes(booking.status) && (
+                <div
+                  aria-live="polite"
+                  className="mb-4 rounded-xl bg-[var(--brand-muted)] p-3 text-sm leading-relaxed text-[var(--foreground)]"
+                >
+                  {booking.status === "inquiry" ? (
+                    <>
+                      먼저 고객과 촬영 상담 메시지를 나누세요. 조건과 가격을
+                      합의한 뒤 견적을 보내면 고객이 수락하고 예약금을
+                      결제해요.
+                    </>
+                  ) : booking.status === "quoted" ? (
+                    <>
+                      견적을 고객에게 보냈어요. 고객이 견적을 수락하고 예약금을
+                      결제하면 촬영 예약이 진행돼요. 수정이 필요하면 견적을 다시
+                      보낼 수 있어요.
+                    </>
+                  ) : booking.status === "held" ? (
+                    <>
+                      고객이 견적을 수락했어요. 예약금 결제를 기다리는 중이에요.
+                      예약금 결제는 고객이 진행해요.
+                    </>
+                  ) : booking.status === "deposit_paid" ? (
+                    <>
+                      예약금 결제가 완료됐어요. 작가가 누르는 별도 확정 버튼은
+                      없어요. 잔금 결제가 완료되면 촬영 확정 상태로 자동
+                      변경됩니다.
+                    </>
+                  ) : booking.status === "confirmed" ? (
+                    <>
+                      잔금 결제까지 완료되어 촬영이 확정됐어요. 촬영을 마친 뒤
+                      아래의 촬영 완료 처리를 눌러주세요.
+                    </>
+                  ) : null}
+                  {booking.status !== "closed" &&
+                    booking.status !== "cancelled" &&
+                    booking.status !== "disputed" && (
+                      <Link
+                        href="#booking-chat"
+                        className="sf-link mt-3 inline-flex items-center gap-1 font-semibold"
+                      >
+                        촬영 상담 메시지로 이동
+                        <Icon name="chevron" className="h-4 w-4" />
+                      </Link>
+                    )}
+                </div>
+              )}
             {actionError && (
               <p className="mb-2 text-sm text-danger">{actionError}</p>
             )}
 
-            {booking.status === "inquiry" && isPhotographerSide && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="quote-amount">견적 금액(원)</Label>
-                <Input
-                  id="quote-amount"
-                  type="number"
-                  value={quoteAmount}
-                  onChange={(e) => setQuoteAmount(e.target.value)}
-                />
-                {!booking.packageId && (
-                  <>
-                    <Label htmlFor="quote-duration">촬영 시간(분)</Label>
-                    <Input
-                      id="quote-duration"
-                      type="number"
-                      value={quoteDurationMin}
-                      onChange={(e) => setQuoteDurationMin(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      상품 없는 맞춤 견적은 분야별 시간당 최저가 검증을 위해
-                      촬영 시간이 필요해요.
-                    </p>
-                  </>
-                )}
-                <Button
-                  disabled={
-                    isBusy ||
-                    !quoteAmount ||
-                    (!booking.packageId && !quoteDurationMin)
-                  }
-                  onClick={submitQuote}
-                >
-                  견적 제시하기
-                </Button>
-              </div>
-            )}
             {booking.status === "inquiry" && isCustomerSide && (
               <p className="text-sm text-muted-foreground">
                 작가의 견적을 기다리고 있어요.
@@ -478,6 +573,15 @@ export default function BookingRoomPage() {
 
             {booking.status === "quoted" && (
               <div className="flex flex-col gap-2 text-sm">
+                {booking.holdExpiresAt && (
+                  <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+                    견적 유효시간 ·{" "}
+                    {new Date(booking.holdExpiresAt).toLocaleString("ko-KR", {
+                      timeZone: "Asia/Seoul",
+                    })}
+                    까지. 유효시간이 지나면 자동 취소돼요.
+                  </p>
+                )}
                 <p>
                   총액 {booking.totalAmount?.toLocaleString()}원 · 예약금{" "}
                   {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
@@ -495,9 +599,26 @@ export default function BookingRoomPage() {
                     견적 수락하기
                   </Button>
                 ) : (
-                  <p className="text-muted-foreground">
-                    고객의 수락을 기다리고 있어요.
-                  </p>
+                  <>
+                    <p className="text-muted-foreground">
+                      고객의 수락을 기다리고 있어요.
+                    </p>
+                    {!showQuoteEditor && (
+                      <Button
+                        variant="secondary"
+                        disabled={isBusy}
+                        onClick={() => {
+                          setQuoteAmount(String(booking.totalAmount ?? ""));
+                          setShowQuoteEditor(true);
+                        }}
+                      >
+                        견적 수정·다시 보내기
+                      </Button>
+                    )}
+                    <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+                      다시 보내면 고객에게 알리고 유효시간이 1시간으로 갱신돼요.
+                    </p>
+                  </>
                 )}
               </div>
             )}
@@ -596,6 +717,11 @@ export default function BookingRoomPage() {
                 고객의 납품 확인을 기다리고 있어요.
               </p>
             )}
+            {["delivered", "closed"].includes(booking.status) &&
+              isPhotographerSide &&
+              booking.deliveries?.length ? (
+                <PhotoShareAction bookingId={booking.id} token={token} />
+              ) : null}
 
             {booking.status === "closed" && isPhotographerSide && (
               <p className="text-sm text-muted-foreground">
@@ -719,6 +845,98 @@ function PhotoUploadAction({
         <p className="mt-2 text-sm text-muted-foreground">업로드 중...</p>
       )}
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
+function PhotoShareAction({
+  bookingId,
+  token,
+}: {
+  bookingId: string;
+  token: string | null;
+}) {
+  const [shareUrl, setShareUrl] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function createAndCopyLink() {
+    setIsBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await apiFetch<{ shareUrl: string; expiresAt: string }>(
+        `/bookings/${bookingId}/deliveries/share-link`,
+        { method: "POST", token },
+      );
+      setShareUrl(result.shareUrl);
+      try {
+        await navigator.clipboard.writeText(result.shareUrl);
+        setMessage("공유 링크를 복사했어요. 고객에게 붙여넣어 보내세요.");
+      } catch {
+        setMessage("아래 링크를 복사해 고객에게 보내세요.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "사진 공유 링크를 만들지 못했어요.",
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setMessage("공유 링크를 복사했어요.");
+      setError(null);
+    } catch {
+      setMessage("링크를 선택해 복사해 고객에게 보내세요.");
+    }
+  }
+
+  return (
+    <div className="rounded-xl bg-muted p-3">
+      <p className="text-sm font-semibold">사진 공유 링크</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        고객이 로그인하지 않아도 원본 사진을 확인하고 다운로드할 수 있어요.
+        다운로드 기한은 납품 후 30일이에요.
+      </p>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="mt-3 w-full"
+        disabled={isBusy}
+        onClick={createAndCopyLink}
+      >
+        {isBusy
+          ? "공유 링크 만드는 중..."
+          : shareUrl
+            ? "공유 링크 다시 복사"
+            : "공유 링크 만들고 복사"}
+      </Button>
+      {shareUrl && (
+        <div className="mt-3 flex gap-2">
+          <Input
+            aria-label="사진 공유 링크"
+            readOnly
+            value={shareUrl}
+            className="min-w-0 flex-1 text-xs"
+          />
+          <Button size="sm" variant="secondary" onClick={copyLink}>
+            복사
+          </Button>
+        </div>
+      )}
+      {message && <p className="mt-2 text-xs text-muted-foreground">{message}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

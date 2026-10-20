@@ -32,6 +32,8 @@ interface AuthContextValue {
   token: string | null;
   user: AuthUser | null;
   isLoading: boolean;
+  workspaceMode: "customer" | "photographer";
+  setWorkspaceMode: (mode: "customer" | "photographer") => void;
   signup: (input: {
     role: "customer" | "photographer";
     name: string;
@@ -45,7 +47,9 @@ interface AuthContextValue {
     email: string;
     phone: string;
   }) => Promise<{ userId: string; message: string }>;
-  startKakaoLogin: (preferredRole?: "customer" | "photographer") => Promise<string>;
+  startKakaoLogin: (
+    preferredRole?: "customer" | "photographer",
+  ) => Promise<string>;
   completeKakaoLogin: (ticket: string) => Promise<KakaoCompleteResult>;
   linkKakaoAccount: (ticket: string, accessToken: string) => Promise<void>;
   requestLoginOtp: (phone: string) => Promise<{ message: string }>;
@@ -62,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [workspaceMode, updateWorkspaceMode] = useState<
+    "customer" | "photographer"
+  >("customer");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -71,6 +78,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(raw) as StoredAuth;
           setToken(parsed.token);
           setUser(parsed.user);
+          updateWorkspaceMode(
+            parsed.user.role === "photographer" &&
+              window.sessionStorage.getItem(
+                `scenefinder.mode.${parsed.user.id}`,
+              ) === "photographer"
+              ? "photographer"
+              : "customer",
+          );
         } catch {
           window.localStorage.removeItem(STORAGE_KEY);
         }
@@ -85,12 +100,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setToken(next.token);
       setUser(next.user);
+      updateWorkspaceMode(
+        next.user.role === "photographer" &&
+          window.sessionStorage.getItem(`scenefinder.mode.${next.user.id}`) ===
+            "photographer"
+          ? "photographer"
+          : "customer",
+      );
     } else {
       window.localStorage.removeItem(STORAGE_KEY);
       setToken(null);
       setUser(null);
+      updateWorkspaceMode("customer");
     }
   }, []);
+
+  const setWorkspaceMode = useCallback(
+    (mode: "customer" | "photographer") => {
+      if (user?.role !== "photographer") return;
+      window.sessionStorage.setItem(`scenefinder.mode.${user.id}`, mode);
+      updateWorkspaceMode(mode);
+    },
+    [user],
+  );
 
   const signup = useCallback(
     (input: {
@@ -121,13 +153,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const startKakaoLogin = useCallback(async (preferredRole?: "customer" | "photographer") => {
-    const path = preferredRole
-      ? `/auth/kakao?role=${encodeURIComponent(preferredRole)}`
-      : "/auth/kakao";
-    const result = await apiFetch<{ authorizationUrl: string }>(path);
-    return result.authorizationUrl;
-  }, []);
+  const startKakaoLogin = useCallback(
+    async (preferredRole?: "customer" | "photographer") => {
+      const path = preferredRole
+        ? `/auth/kakao?role=${encodeURIComponent(preferredRole)}`
+        : "/auth/kakao";
+      const result = await apiFetch<{ authorizationUrl: string }>(path);
+      return result.authorizationUrl;
+    },
+    [],
+  );
 
   const completeKakaoLogin = useCallback(
     async (ticket: string): Promise<KakaoCompleteResult> => {
@@ -190,6 +225,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       user,
       isLoading,
+      workspaceMode,
+      setWorkspaceMode,
       signup,
       signupWithKakao,
       startKakaoLogin,
@@ -203,6 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       user,
       isLoading,
+      workspaceMode,
+      setWorkspaceMode,
       signup,
       signupWithKakao,
       startKakaoLogin,

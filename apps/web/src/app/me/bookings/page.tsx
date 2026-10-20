@@ -6,6 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { rememberAuthReturn } from "@/lib/auth-return";
 import { useAuth } from "@/lib/auth-context";
+import {
+  bookingDate,
+  RESERVED_STATUSES,
+  STUDIO_NEXT_ACTION,
+} from "@/lib/studio";
+import { koreaToday } from "@/lib/discovery";
 import type { BookingListItem, BookingStatus } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -38,7 +44,7 @@ const NEXT_STEP: Record<BookingStatus, string> = {
 };
 
 function MyBookingsContent() {
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, setWorkspaceMode } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const view =
@@ -48,7 +54,14 @@ function MyBookingsContent() {
     bookings: BookingListItem[];
     error: string | null;
   } | null>(null);
-  const [filter, setFilter] = useState("all");
+  const filter = params.get("status") || "all";
+  function setFilter(value: string) {
+    const next = new URLSearchParams(params.toString());
+    next.set("role", view);
+    if (value === "all") next.delete("status");
+    else next.set("status", value);
+    router.replace(`/me/bookings?${next}`, { scroll: false });
+  }
   const [refresh, setRefresh] = useState(0);
   const key = `${user?.id}:${view}:${refresh}`;
   useEffect(() => {
@@ -61,7 +74,10 @@ function MyBookingsContent() {
     let active = true;
     apiFetch<BookingListItem[]>(`/bookings?role=${view}`, { token })
       .then((bookings) => {
-        if (active) setResult({ key, bookings, error: null });
+        if (active) {
+          setResult({ key, bookings, error: null });
+          setWorkspaceMode(view);
+        }
       })
       .catch((err) => {
         if (active)
@@ -77,17 +93,25 @@ function MyBookingsContent() {
     return () => {
       active = false;
     };
-  }, [isLoading, user, token, router, view, key]);
+  }, [isLoading, user, token, router, view, key, setWorkspaceMode]);
   const loaded = result?.key === key ? result : null;
   const bookings = loaded?.bookings.filter(
     (b) =>
       filter === "all" ||
       (filter === "ongoing"
         ? !["closed", "cancelled"].includes(b.status)
-        : ["closed", "cancelled"].includes(b.status)),
+        : filter === "finished"
+          ? ["closed", "cancelled"].includes(b.status)
+          : filter === "today"
+            ? RESERVED_STATUSES.includes(b.status) &&
+              bookingDate(b) === koreaToday()
+            : filter === "upcoming"
+              ? RESERVED_STATUSES.includes(b.status) &&
+                bookingDate(b) >= koreaToday()
+              : b.status === filter),
   );
   return (
-    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12">
+    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12 lg:max-w-[1200px] lg:px-8 lg:pt-12">
       <p className="mb-2 text-sm font-semibold text-[var(--brand-text)]">
         {view === "customer"
           ? "문의부터 사진 받기까지 한곳에서"
@@ -96,33 +120,33 @@ function MyBookingsContent() {
       <h1 className="text-[26px] font-bold">
         {view === "customer" ? "내 예약" : "작가 예약 관리"}
       </h1>
-      {user?.role === "photographer" && (
-        <div
-          className="mt-5 grid grid-cols-2 gap-2"
-          role="group"
-          aria-label="예약 종류"
-        >
+      {user?.role === "photographer" && view === "customer" && (
+        <div className="mt-5" role="group" aria-label="예약 종류">
           <button
             type="button"
-            aria-pressed={view === "customer"}
-            onClick={() => router.push("/me/bookings?role=customer")}
-            className="sf-choice rounded-xl px-3 py-3 text-sm font-semibold"
-          >
-            고객으로 예약한 내역
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === "photographer"}
+            aria-label="작가 예약 보기"
             onClick={() => router.push("/me/bookings?role=photographer")}
-            className="sf-choice rounded-xl px-3 py-3 text-sm font-semibold"
+            className="sf-button-secondary rounded-xl px-4 py-3 text-sm font-semibold"
           >
-            작가로 받은 예약
+            작가 문의·예약 보기
           </button>
         </div>
       )}
-      <div className="mt-6 mb-5 flex gap-2" role="group" aria-label="예약 상태">
+      <div
+        className="mt-6 mb-5 flex flex-wrap gap-2"
+        role="group"
+        aria-label="예약 상태"
+      >
         {[
           { code: "all", label: "전체" },
+          ...(view === "photographer"
+            ? [
+                { code: "inquiry", label: "답변할 문의" },
+                { code: "quoted", label: "보낸 견적" },
+                { code: "today", label: "오늘 촬영" },
+                { code: "completed", label: "사진 전달 대기" },
+              ]
+            : []),
           { code: "ongoing", label: "진행 중" },
           { code: "finished", label: "완료·취소" },
         ].map((f) => (
@@ -164,7 +188,9 @@ function MyBookingsContent() {
           />
           <h2 className="text-lg font-bold">
             {filter === "all"
-              ? "아직 예약한 촬영이 없어요"
+              ? view === "photographer"
+                ? "아직 받은 촬영 문의가 없어요"
+                : "아직 예약한 촬영이 없어요"
               : "이 상태의 예약이 없어요"}
           </h2>
           <p className="mt-2 text-sm text-[var(--muted-foreground)]">
@@ -182,11 +208,11 @@ function MyBookingsContent() {
           )}
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2 lg:gap-5">
           {bookings?.map((b) => (
             <Link
               key={b.id}
-              href={`/bookings/${b.id}`}
+              href={`/bookings/${b.id}?role=${view}`}
               className="sf-card sf-card-hover block rounded-2xl bg-[var(--card)] p-5"
             >
               <div className="flex items-center justify-between gap-3">
@@ -228,8 +254,14 @@ function MyBookingsContent() {
               <p className="mt-4 rounded-xl bg-[var(--muted)] p-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
                 {view === "customer"
                   ? NEXT_STEP[b.status]
-                  : "예약 상세에서 촬영 정보와 다음 단계를 확인하세요."}
+                  : STUDIO_NEXT_ACTION[b.status]}
               </p>
+              {view === "photographer" && b.status === "inquiry" && (
+                <span className="sf-link mt-3 inline-flex items-center gap-1 text-sm font-semibold">
+                  문의 열고 견적 작성하기
+                  <Icon name="chevron" className="h-4 w-4" />
+                </span>
+              )}
             </Link>
           ))}
         </div>

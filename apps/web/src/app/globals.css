@@ -132,7 +132,8 @@ a {
   color: var(--foreground);
   box-shadow: inset 0 0 0 1.5px transparent;
 }
-.sf-choice[aria-pressed="true"] {
+.sf-choice[aria-pressed="true"],
+.sf-choice[aria-selected="true"] {
   background: var(--brand-muted);
   color: var(--brand-text);
   box-shadow: inset 0 0 0 1.5px var(--brand);

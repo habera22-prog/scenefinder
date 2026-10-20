@@ -173,11 +173,11 @@ function ResultsList() {
     "sf-input min-h-12 w-full min-w-0 rounded-xl px-3 py-3 text-sm";
 
   return (
-    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12">
+    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12 lg:max-w-[1200px] lg:px-8 lg:pt-12">
       <p className="mb-2 text-sm font-semibold text-[var(--brand-text)]">
         작품을 보고, 나에게 맞게
       </p>
-      <h1 className="text-[26px] leading-snug font-bold">
+      <h1 className="text-[26px] leading-snug font-bold lg:text-[32px]">
         {category && labels[category]
           ? `${labels[category]} 촬영 작가 찾기`
           : "어떤 작가와 함께할까요?"}
@@ -214,191 +214,199 @@ function ResultsList() {
           </button>
         ))}
       </div>
-      <Card className="mt-5 space-y-4 p-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="region">촬영 지역</Label>
-            <select
-              id="region"
-              value={region}
-              onChange={(e) => updateParams({ region: e.target.value })}
-              className={selectClass}
-            >
-              <option value="">전체 지역</option>
-              {region && !regions.includes(region) && (
-                <option value={region}>{region}</option>
-              )}
-              {regions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="date">희망 날짜</Label>
-            <Input
-              id="date"
-              aria-label="희망 날짜"
-              type="date"
-              min={koreaToday()}
-              value={date}
-              onChange={(e) => updateParams({ date: e.target.value })}
-              className="min-h-12 px-3 py-3 text-sm"
-            />
-          </div>
-        </div>
-        <div>
-          <Label htmlFor="captureMode">촬영 방식</Label>
-          <select
-            id="captureMode"
-            value={captureMode}
-            onChange={(e) => updateParams({ captureMode: e.target.value })}
-            className={selectClass}
-          >
-            <option value="">전체 방식 · 상담 후 결정</option>
-            {captureModes.map((m) => (
-              <option key={m.id} value={m.code}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        {date && (
-          <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
-            선택한 날짜가 휴무인 작가는 제외해요. 촬영 가능 시간은 문의로
-            확인해주세요.
-          </p>
-        )}
-        {optionsError && (
-          <p className="text-sm text-[var(--danger)]">
-            검색 조건을 불러오지 못했어요.{" "}
-            <button
-              type="button"
-              onClick={() => setRefresh(refresh + 1)}
-              className="sf-link font-semibold"
-            >
-              다시 불러오기
-            </button>
-          </p>
-        )}
-        {filtered && (
-          <button
-            type="button"
-            onClick={() => router.replace("/photographers", { scroll: false })}
-            className="sf-link inline-flex items-center gap-1 text-sm"
-          >
-            <Icon name="close" className="h-4 w-4" />
-            조건 초기화
-          </button>
-        )}
-      </Card>
+      <div className="mt-5 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <aside aria-label="촬영 조건" className="lg:sticky lg:top-20">
+          <Card className="space-y-4 p-5">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+              <div>
+                <Label htmlFor="region">촬영 지역</Label>
+                <select
+                  id="region"
+                  value={region}
+                  onChange={(e) => updateParams({ region: e.target.value })}
+                  className={selectClass}
+                >
+                  <option value="">전체 지역</option>
+                  {region && !regions.includes(region) && (
+                    <option value={region}>{region}</option>
+                  )}
+                  {regions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="date">희망 날짜</Label>
+                <Input
+                  id="date"
+                  aria-label="희망 날짜"
+                  type="date"
+                  min={koreaToday()}
+                  value={date}
+                  onChange={(e) => updateParams({ date: e.target.value })}
+                  className="min-h-12 px-3 py-3 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="captureMode">촬영 방식</Label>
+              <select
+                id="captureMode"
+                value={captureMode}
+                onChange={(e) => updateParams({ captureMode: e.target.value })}
+                className={selectClass}
+              >
+                <option value="">전체 방식 · 상담 후 결정</option>
+                {captureModes.map((m) => (
+                  <option key={m.id} value={m.code}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {date && (
+              <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+                선택한 날짜가 휴무인 작가는 제외해요. 촬영 가능 시간은 문의로
+                확인해주세요.
+              </p>
+            )}
+            {optionsError && (
+              <p className="text-sm text-[var(--danger)]">
+                검색 조건을 불러오지 못했어요.{" "}
+                <button
+                  type="button"
+                  onClick={() => setRefresh(refresh + 1)}
+                  className="sf-link font-semibold"
+                >
+                  다시 불러오기
+                </button>
+              </p>
+            )}
+            {filtered && (
+              <button
+                type="button"
+                onClick={() =>
+                  router.replace("/photographers", { scroll: false })
+                }
+                className="sf-link inline-flex items-center gap-1 text-sm"
+              >
+                <Icon name="close" className="h-4 w-4" />
+                조건 초기화
+              </button>
+            )}
+          </Card>
+        </aside>
 
-      <div className="mt-7 mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold" aria-live="polite">
-          {photographers === null
-            ? "작가를 찾고 있어요"
-            : `작가 ${photographers.length}명`}
-        </p>
-        <div className="flex items-center gap-2">
-          <label htmlFor="sort" className="sr-only">
-            작가 정렬
-          </label>
-          <select
-            id="sort"
-            value={sort}
-            onChange={(e) => updateParams({ sort: e.target.value })}
-            className="rounded-lg bg-transparent py-2 text-sm text-[var(--muted-foreground)]"
-          >
-            <option value="rating">평점 높은 순</option>
-            <option value="price">시작 가격 낮은 순</option>
-            <option value="newest">새로 등록한 순</option>
-          </select>
-        </div>
-      </div>
-      {favoriteError && (
-        <p role="alert" className="mb-4 text-sm text-[var(--danger)]">
-          {favoriteError}
-        </p>
-      )}
-      {error ? (
-        <Card className="p-6 text-center">
-          <p role="alert" className="text-sm text-[var(--danger)]">
-            {error}
-          </p>
-          <Button
-            className="mt-4"
-            variant="secondary"
-            onClick={() => setRefresh(refresh + 1)}
-          >
-            다시 시도하기
-          </Button>
-        </Card>
-      ) : photographers === null ? (
-        <div
-          className="grid gap-4 sm:grid-cols-2"
-          role="status"
-          aria-label="작가 목록 불러오는 중"
-        >
-          {[0, 1].map((n) => (
-            <div
-              key={n}
-              className="h-96 animate-pulse rounded-2xl bg-[var(--card)]"
-            />
-          ))}
-        </div>
-      ) : photographers.length === 0 ? (
-        <Card className="px-5 py-10 text-center">
-          <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--brand-muted)] text-[var(--brand-text)]">
-            <Icon name="search" className="h-7 w-7" />
-          </span>
-          <h2 className="text-lg font-bold">
-            조건에 맞는 작가를 아직 못 찾았어요
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
-            {filtered
-              ? "지역이나 날짜 조건을 넓혀서 다시 찾아보세요."
-              : "새로운 작가를 만나실 수 있도록 준비하고 있어요."}
-          </p>
-          {filtered && (
-            <Button
-              className="mt-5"
-              variant="secondary"
-              onClick={() =>
-                router.replace("/photographers", { scroll: false })
-              }
-            >
-              전체 작가 보기
-            </Button>
+        <section aria-label="작가 검색 결과" className="min-w-0">
+          <div className="mt-7 mb-4 flex items-center justify-between gap-3 lg:mt-0">
+            <p className="text-sm font-semibold" aria-live="polite">
+              {photographers === null
+                ? "작가를 찾고 있어요"
+                : `작가 ${photographers.length}명`}
+            </p>
+            <div className="flex items-center gap-2">
+              <label htmlFor="sort" className="sr-only">
+                작가 정렬
+              </label>
+              <select
+                id="sort"
+                value={sort}
+                onChange={(e) => updateParams({ sort: e.target.value })}
+                className="rounded-lg bg-transparent py-2 text-sm text-[var(--muted-foreground)]"
+              >
+                <option value="rating">평점 높은 순</option>
+                <option value="price">시작 가격 낮은 순</option>
+                <option value="newest">새로 등록한 순</option>
+              </select>
+            </div>
+          </div>
+          {favoriteError && (
+            <p role="alert" className="mb-4 text-sm text-[var(--danger)]">
+              {favoriteError}
+            </p>
           )}
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {photographers.map((p) => (
-            <PhotographerCard
-              key={p.id}
-              photographer={p}
-              isFavorited={favoriteIds.has(p.id)}
-              isBusy={busyId === p.id}
-              onToggleFavorite={
-                user?.role === "admin"
-                  ? undefined
-                  : (e) => toggleFavorite(p.id, e)
-              }
-              categoryLabels={labels}
-              searchContext={queryString}
-            />
-          ))}
-        </div>
-      )}
+          {error ? (
+            <Card className="p-6 text-center">
+              <p role="alert" className="text-sm text-[var(--danger)]">
+                {error}
+              </p>
+              <Button
+                className="mt-4"
+                variant="secondary"
+                onClick={() => setRefresh(refresh + 1)}
+              >
+                다시 시도하기
+              </Button>
+            </Card>
+          ) : photographers === null ? (
+            <div
+              className="grid gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3"
+              role="status"
+              aria-label="작가 목록 불러오는 중"
+            >
+              {[0, 1].map((n) => (
+                <div
+                  key={n}
+                  className="h-96 animate-pulse rounded-2xl bg-[var(--card)]"
+                />
+              ))}
+            </div>
+          ) : photographers.length === 0 ? (
+            <Card className="px-5 py-10 text-center">
+              <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--brand-muted)] text-[var(--brand-text)]">
+                <Icon name="search" className="h-7 w-7" />
+              </span>
+              <h2 className="text-lg font-bold">
+                조건에 맞는 작가를 아직 못 찾았어요
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                {filtered
+                  ? "지역이나 날짜 조건을 넓혀서 다시 찾아보세요."
+                  : "새로운 작가를 만나실 수 있도록 준비하고 있어요."}
+              </p>
+              {filtered && (
+                <Button
+                  className="mt-5"
+                  variant="secondary"
+                  onClick={() =>
+                    router.replace("/photographers", { scroll: false })
+                  }
+                >
+                  전체 작가 보기
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+              {photographers.map((p) => (
+                <PhotographerCard
+                  key={p.id}
+                  photographer={p}
+                  isFavorited={favoriteIds.has(p.id)}
+                  isBusy={busyId === p.id}
+                  onToggleFavorite={
+                    user?.role === "admin"
+                      ? undefined
+                      : (e) => toggleFavorite(p.id, e)
+                  }
+                  categoryLabels={labels}
+                  searchContext={queryString}
+                />
+              ))}
+            </div>
+          )}
 
-      <Link
-        href="/navigator"
-        className={`${buttonStyles("secondary")} mt-7 w-full`}
-      >
-        <Icon name="sparkles" />
-        촬영 종류부터 차근차근 찾기
-      </Link>
+          <Link
+            href="/navigator"
+            className={`${buttonStyles("secondary")} mt-7 w-full`}
+          >
+            <Icon name="sparkles" />
+            촬영 종류부터 차근차근 찾기
+          </Link>
+        </section>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { MarkdownView } from "@/components/pages/MarkdownView";
+import { MarketingPage } from "@/components/pages/MarketingPage";
 
 const MENU: { slug: string; label: string }[] = [
   { slug: "how-to-use", label: "이용방법" },
@@ -26,28 +27,45 @@ interface PageContent {
 
 export default function StaticPage() {
   const params = useParams<{ slug: string }>();
-  const [page, setPage] = useState<PageContent | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    slug: string;
+    page?: PageContent;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
-    setPage(null);
-    setError(null);
+    let active = true;
     apiFetch<PageContent>(`/pages/${params.slug}`)
-      .then(setPage)
+      .then((page) => {
+        if (active) setResult({ slug: params.slug, page });
+      })
       .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "페이지를 불러오지 못했습니다."),
+        active &&
+        setResult({
+          slug: params.slug,
+          error:
+            err instanceof ApiError
+              ? err.message
+              : "페이지를 불러오지 못했습니다.",
+        }),
       );
+    return () => {
+      active = false;
+    };
   }, [params.slug]);
 
+  const page = result?.slug === params.slug ? result.page ?? null : null;
+  const error = result?.slug === params.slug ? result.error ?? null : null;
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row">
-      <aside className="shrink-0 md:w-48">
-        <nav className="flex flex-col gap-0.5 text-sm">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:gap-8 md:py-12">
+      <aside className="shrink-0 md:sticky md:top-24 md:w-48 md:self-start">
+        <nav className="flex gap-1 overflow-x-auto pb-1 text-sm md:flex-col md:overflow-visible md:pb-0">
           {MENU.map((m) => (
             <Link
               key={m.slug}
               href={`/pages/${m.slug}`}
-              className={`rounded-lg px-3 py-2 font-medium ${
+              className={`shrink-0 rounded-lg px-3 py-2 font-medium ${
                 params.slug === m.slug
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted"
@@ -59,20 +77,29 @@ export default function StaticPage() {
         </nav>
       </aside>
 
-      <Card className="min-w-0 flex-1 p-6">
+      <main className="min-w-0 flex-1">
         {error && <p className="text-sm text-danger">{error}</p>}
         {!page && !error && (
-          <div className="flex justify-center py-16">
+          <Card className="flex justify-center py-16">
             <Spinner className="h-8 w-8 text-brand" />
-          </div>
+          </Card>
         )}
-        {page && (
-          <>
-            <h1 className="mb-4 text-xl font-bold text-foreground">{page.title}</h1>
-            <MarkdownView content={page.content} />
-          </>
-        )}
-      </Card>
+        {page &&
+          (page.slug === "how-to-use" || page.slug === "about" ? (
+            <MarketingPage
+              slug={page.slug}
+              title={page.title}
+              content={page.content}
+            />
+          ) : (
+            <Card className="p-6">
+              <h1 className="mb-4 text-xl font-bold text-foreground">
+                {page.title}
+              </h1>
+              <MarkdownView content={page.content} />
+            </Card>
+          ))}
+      </main>
     </div>
   );
 }

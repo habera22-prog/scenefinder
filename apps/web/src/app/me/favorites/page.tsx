@@ -87,7 +87,7 @@ export default function MyFavoritesPage() {
   const loaded = user && result?.userId === user.id ? result : null;
   const labels = Object.fromEntries(categories.map((c) => [c.code, c.label]));
   return (
-    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12">
+    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12 lg:max-w-[1200px] lg:px-8 lg:pt-12">
       <p className="mb-2 text-sm font-semibold text-[var(--brand-text)]">
         마음에 드는 작품을 모아두세요
       </p>
@@ -142,7 +142,7 @@ export default function MyFavoritesPage() {
             </Link>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4">
             {loaded.items.map((item) => (
               <PhotographerCard
                 key={item.id}

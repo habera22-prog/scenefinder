@@ -102,7 +102,7 @@ export class CancellationsService {
         'cancellation',
         '예약이 취소되었어요',
         outcome.ruleApplied,
-        `/bookings/${bookingId}`,
+        `/bookings/${bookingId}?role=${initiatedBy === 'customer' ? 'photographer' : 'customer'}`,
       );
     }
 

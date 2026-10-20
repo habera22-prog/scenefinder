@@ -26,4 +26,12 @@ export class BookingDeliveriesController {
   ) {
     return this.deliveriesService.createDelivery(bookingId, user.userId, dto);
   }
+
+  @Post('deliveries/share-link')
+  createShareLink(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveriesService.createShareLink(bookingId, user.userId);
+  }
 }

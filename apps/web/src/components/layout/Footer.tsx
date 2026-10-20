@@ -11,8 +11,8 @@ const links = [
 
 export function Footer() {
   return (
-    <footer className="sf-footer mt-auto bg-[var(--card)] px-5 pt-8 text-xs leading-relaxed text-[var(--muted-foreground)]">
-      <div className="mx-auto max-w-[640px]">
+    <footer className="sf-footer mt-auto bg-[var(--card)] px-5 pt-8 text-xs leading-relaxed text-[var(--muted-foreground)] lg:px-8 lg:pt-10">
+      <div className="mx-auto max-w-[640px] lg:max-w-[1136px]">
         <p className="mb-4 text-base font-bold text-[var(--foreground)]">
           씬파인더
         </p>

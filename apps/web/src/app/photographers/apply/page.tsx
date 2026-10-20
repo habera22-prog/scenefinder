@@ -1,18 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import type { CaptureMode, MyPhotographerProfile, ShootCategory } from "@/lib/types";
+import type {
+  CaptureMode,
+  MyPhotographerProfile,
+  ShootCategory,
+} from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Spinner } from "@/components/ui/Spinner";
+import { Icon } from "@/components/ui/Icon";
+import { ProfileSettings } from "@/components/photographers/ProfileSettings";
+import {
+  StudioPage,
+  StudioLoading,
+  StudioError,
+} from "@/components/photographers/StudioPage";
+import { usePhotographerProfile } from "@/lib/use-photographer-profile";
+import { supportsCaptureMode } from "@/lib/discovery";
 import { PortfolioManager } from "@/components/photographers/PortfolioManager";
 import { PackageManager } from "@/components/photographers/PackageManager";
-import { AvailabilityManager } from "@/components/photographers/AvailabilityManager";
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: "심사 대기 중",
@@ -20,13 +31,17 @@ const VERIFICATION_LABEL: Record<string, string> = {
   rejected: "반려됨",
 };
 
-function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => void }) {
+function ApplyForm({
+  onApplied,
+}: {
+  onApplied: (p: MyPhotographerProfile) => void;
+}) {
   const { token } = useAuth();
   const [categories, setCategories] = useState<ShootCategory[]>([]);
   const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
-  const [photographerType, setPhotographerType] = useState<"business" | "freelancer">(
-    "business",
-  );
+  const [photographerType, setPhotographerType] = useState<
+    "business" | "freelancer"
+  >("business");
   const [businessRegNo, setBusinessRegNo] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [representativeName, setRepresentativeName] = useState("");
@@ -35,7 +50,9 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
   const [activeRegions, setActiveRegions] = useState("");
   const [moodTags, setMoodTags] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
+    [],
+  );
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,25 +101,42 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
     }
     setIsSubmitting(true);
     try {
-      const profile = await apiFetch<MyPhotographerProfile>("/photographers/apply", {
-        method: "POST",
-        token,
-        body: {
-          photographerType,
-          ...(photographerType === "business"
-            ? { businessRegNo, businessName, representativeName }
-            : {}),
-          settlementAccount,
-          settlementAccountHolder,
-          activeRegions: activeRegions.split(",").map((s) => s.trim()).filter(Boolean),
-          moodTags: moodTags.split(",").map((s) => s.trim()).filter(Boolean),
-          categories: selectedCategories,
-          captureCapabilities: selectedCapabilities,
+      const profile = await apiFetch<MyPhotographerProfile>(
+        "/photographers/apply",
+        {
+          method: "POST",
+          token,
+          body: {
+            photographerType,
+            ...(photographerType === "business"
+              ? { businessRegNo, businessName, representativeName }
+              : {}),
+            settlementAccount,
+            settlementAccountHolder,
+            activeRegions: activeRegions
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+            moodTags: moodTags
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+            categories: selectedCategories.filter((code) =>
+              categories.some(
+                (c) =>
+                  c.code === code &&
+                  (!c.businessOnly || photographerType === "business"),
+              ),
+            ),
+            captureCapabilities: selectedCapabilities,
+          },
         },
-      });
+      );
       onApplied(profile);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "지원 신청에 실패했습니다.");
+      setError(
+        err instanceof ApiError ? err.message : "지원 신청에 실패했습니다.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -112,8 +146,9 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
     <Card className="p-6">
       <h1 className="mb-1 text-xl font-bold text-foreground">작가 지원하기</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        사업자로 지원하거나, 사업자등록 없이 프리랜서로 지원할 수 있어요. 두 유형 모두
-        본인인증·계좌·포트폴리오 확인 후 관리자 승인이 있어야 활동할 수 있습니다.
+        사업자로 지원하거나, 사업자등록 없이 프리랜서로 지원할 수 있어요. 두
+        유형 모두 본인인증·계좌·포트폴리오 확인 후 관리자 승인이 있어야 활동할
+        수 있습니다.
       </p>
       <div className="mb-4 flex gap-2">
         <button
@@ -142,36 +177,36 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         {photographerType === "business" && (
           <>
-        <div>
-          <Label htmlFor="businessRegNo">사업자등록번호</Label>
-          <Input
-            id="businessRegNo"
-            required
-            placeholder="10자리 숫자"
-            value={businessRegNo}
-            onChange={(e) => setBusinessRegNo(e.target.value)}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="businessName">상호</Label>
-            <Input
-              id="businessName"
-              required
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="representativeName">대표자명</Label>
-            <Input
-              id="representativeName"
-              required
-              value={representativeName}
-              onChange={(e) => setRepresentativeName(e.target.value)}
-            />
-          </div>
-        </div>
+            <div>
+              <Label htmlFor="businessRegNo">사업자등록번호</Label>
+              <Input
+                id="businessRegNo"
+                required
+                placeholder="10자리 숫자"
+                value={businessRegNo}
+                onChange={(e) => setBusinessRegNo(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="businessName">상호</Label>
+                <Input
+                  id="businessName"
+                  required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="representativeName">대표자명</Label>
+                <Input
+                  id="representativeName"
+                  required
+                  value={representativeName}
+                  onChange={(e) => setRepresentativeName(e.target.value)}
+                />
+              </div>
+            </div>
           </>
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -216,23 +251,27 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
         <div>
           <Label>전문 분야 (하나 이상 선택)</Label>
           <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => toggleCategory(c.code)}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
-                  selectedCategories.includes(c.code)
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-border bg-card text-foreground"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
+            {categories
+              .filter((c) => !c.businessOnly || photographerType === "business")
+              .map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCategory(c.code)}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                    selectedCategories.includes(c.code)
+                      ? "border-brand bg-brand-muted text-brand"
+                      : "border-border bg-card text-foreground"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
           </div>
           {isLoadingOptions && (
-            <p className="mt-2 text-sm text-muted-foreground">전문 분야를 불러오는 중이에요.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              전문 분야를 불러오는 중이에요.
+            </p>
           )}
           {!isLoadingOptions && optionsError && (
             <p className="mt-2 text-sm text-danger" role="alert">
@@ -264,7 +303,9 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
             ))}
           </div>
           {isLoadingOptions && (
-            <p className="mt-2 text-sm text-muted-foreground">촬영 방식을 불러오는 중이에요.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              촬영 방식을 불러오는 중이에요.
+            </p>
           )}
           {!isLoadingOptions && optionsError && (
             <p className="mt-2 text-sm text-danger" role="alert">
@@ -280,7 +321,13 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
         {error && <p className="text-sm text-danger">{error}</p>}
         <Button
           type="submit"
-          disabled={isSubmitting || isLoadingOptions || optionsError || categories.length === 0 || captureModes.length === 0}
+          disabled={
+            isSubmitting ||
+            isLoadingOptions ||
+            optionsError ||
+            categories.length === 0 ||
+            captureModes.length === 0
+          }
           className="mt-2"
         >
           {isSubmitting ? "제출 중..." : "지원하기"}
@@ -291,117 +338,239 @@ function ApplyForm({ onApplied }: { onApplied: (p: MyPhotographerProfile) => voi
 }
 
 export default function PhotographerApplyPage() {
-  const { user, token, isLoading: authLoading } = useAuth();
-  const router = useRouter();
-  const [profile, setProfile] = useState<MyPhotographerProfile | null | undefined>(
-    undefined,
-  );
+  const { profile, token, user, loading, error, reload, setProfile } =
+    usePhotographerProfile();
   const [categories, setCategories] = useState<ShootCategory[]>([]);
   const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
-
+  const [optionsError, setOptionsError] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const [tab, setTab] = useState("basic");
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
+  const [verificationBusy, setVerificationBusy] = useState(false);
   useEffect(() => {
-    apiFetch<ShootCategory[]>("/shoot-categories").then(setCategories).catch(() => {});
-    apiFetch<CaptureMode[]>("/capture-modes").then(setCaptureModes).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    if (user.role !== "photographer") {
-      router.push("/");
-      return;
-    }
-    apiFetch<MyPhotographerProfile | null>("/photographers/me", { token })
-      .then(setProfile)
-      .catch(() => setProfile(null));
-  }, [authLoading, user, token, router]);
-
+    let active = true;
+    Promise.all([
+      apiFetch<ShootCategory[]>("/shoot-categories"),
+      apiFetch<CaptureMode[]>("/capture-modes"),
+    ])
+      .then(([c, m]) => {
+        if (active) {
+          setCategories(c);
+          setCaptureModes(m);
+          setOptionsError(false);
+        }
+      })
+      .catch(() => {
+        if (active) setOptionsError(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [refresh]);
   async function requestVerification() {
-    const updated = await apiFetch<MyPhotographerProfile>(
-      "/photographers/business-verification",
-      { method: "POST", token },
-    );
-    setProfile((prev) => (prev ? { ...prev, ...updated } : updated));
+    setVerificationBusy(true);
+    setVerificationError(null);
+    try {
+      await apiFetch("/photographers/business-verification", {
+        method: "POST",
+        token,
+      });
+      reload();
+    } catch (err) {
+      setVerificationError(
+        err instanceof ApiError ? err.message : "인증 요청을 보내지 못했어요.",
+      );
+    } finally {
+      setVerificationBusy(false);
+    }
   }
-
-  if (authLoading || profile === undefined) {
+  if (loading) return <StudioLoading />;
+  if (error)
     return (
-      <div className="flex flex-1 items-center justify-center py-24">
-        <Spinner className="h-8 w-8 text-brand" />
-      </div>
+      <StudioPage>
+        <StudioError message={error} retry={reload} />
+      </StudioPage>
     );
-  }
-
-  if (!profile) {
+  if (!profile)
     return (
-      <div className="mx-auto w-full max-w-xl flex-1 px-4 py-12 sm:px-6">
+      <StudioPage>
         <ApplyForm onApplied={setProfile} />
-      </div>
+      </StudioPage>
     );
-  }
-
+  const supportedCategories = categories.filter(
+    (c) =>
+      profile.categories.includes(c.code) &&
+      (!c.businessOnly || profile.photographerType === "business"),
+  );
+  const supportedModes = captureModes.filter((m) =>
+    supportsCaptureMode(profile.captureCapabilities || [], m.code),
+  );
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
-      <div className="mb-6 flex items-center justify-between">
+    <StudioPage>
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-foreground">
-              {profile.photographerType === "freelancer" ? user?.name : profile.businessName}
-            </h1>
-            <Badge className={profile.photographerType === "freelancer" ? "bg-sky-100 text-sky-700" : ""}>
-              {profile.photographerType === "freelancer" ? "프리랜서" : "사업자"}
-            </Badge>
-          </div>
-          {profile.photographerType === "business" && (
-            <p className="text-sm text-muted-foreground">{profile.representativeName}</p>
-          )}
+          <p className="mb-2 text-sm font-semibold text-[var(--brand-text)]">
+            고객을 만날 준비
+          </p>
+          <h1 className="text-[26px] font-bold lg:text-[32px]">
+            프로필·상품 관리
+          </h1>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+            {profile.displayName || profile.businessName || user?.name} ·{" "}
+            {profile.photographerType === "freelancer"
+              ? "프리랜서 작가"
+              : "사업자 작가"}
+          </p>
         </div>
-        <Badge className={profile.verificationStatus === "verified" ? "" : "bg-muted text-muted-foreground"}>
-          {VERIFICATION_LABEL[profile.verificationStatus]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge>{VERIFICATION_LABEL[profile.verificationStatus]}</Badge>
+          <Link
+            href={`/photographers/${profile.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonStyles("secondary", "sm")}
+          >
+            고객 화면 미리보기
+            <Icon name="arrow" className="h-4 w-4" />
+          </Link>
+        </div>
+      </header>
+      {profile.verificationStatus !== "verified" && (
+        <Card className="p-5">
+          <p className="text-sm leading-relaxed text-[var(--muted-foreground)]">
+            {profile.verificationStatus === "rejected"
+              ? "등록 정보를 보완해주세요. 심사 진행은 고객센터로 문의할 수 있어요."
+              : "관리자 심사가 진행 중이에요. 작품과 기본 정보를 보완할 수 있고, 상품 등록은 승인 후 가능해요."}
+          </p>
+          {profile.photographerType === "business" && (
+            <Button
+              variant="secondary"
+              className="mt-4"
+              disabled={verificationBusy}
+              onClick={requestVerification}
+            >
+              {verificationBusy ? "요청 중이에요" : "사업자 인증 요청"}
+            </Button>
+          )}
+          {verificationError && (
+            <p role="alert" className="mt-3 text-sm text-[var(--danger)]">
+              {verificationError}
+            </p>
+          )}
+        </Card>
+      )}
+      {optionsError && (
+        <StudioError
+          message="촬영 분야와 방식을 불러오지 못했어요."
+          retry={() => setRefresh((n) => n + 1)}
+        />
+      )}
+      <div
+        className="flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="작가 프로필 관리"
+      >
+        {[
+          { code: "basic", label: "기본 정보" },
+          { code: "portfolio", label: "작품 관리" },
+          { code: "packages", label: "촬영 상품" },
+        ].map((t) => (
+          <button
+            key={t.code}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.code}
+            aria-controls={`panel-${t.code}`}
+            id={`tab-${t.code}`}
+            tabIndex={tab === t.code ? 0 : -1}
+            onKeyDown={(event) => {
+              const tabs = Array.from(
+                event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>(
+                  '[role="tab"]',
+                ),
+              );
+              const current = tabs.indexOf(event.currentTarget);
+              const next =
+                event.key === "ArrowRight"
+                  ? tabs[(current + 1) % tabs.length]
+                  : event.key === "ArrowLeft"
+                    ? tabs[(current + tabs.length - 1) % tabs.length]
+                    : event.key === "Home"
+                      ? tabs[0]
+                      : event.key === "End"
+                        ? tabs[tabs.length - 1]
+                        : null;
+              if (next) {
+                event.preventDefault();
+                next.click();
+                next.focus();
+              }
+            }}
+            onClick={() => setTab(t.code)}
+            className={`sf-choice rounded-xl px-4 py-3 text-sm font-semibold`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-
-      {profile.photographerType === "business" && profile.verificationStatus !== "verified" && (
-        <Card className="mb-6 flex items-center justify-between p-4">
-          <p className="text-sm text-muted-foreground">
-            사업자등록번호 형식 확인 후 관리자 최종 승인이 진행됩니다.
-          </p>
-          <Button size="sm" onClick={requestVerification}>
-            사업자 인증 요청
-          </Button>
-        </Card>
-      )}
-      {profile.photographerType === "freelancer" && profile.verificationStatus !== "verified" && (
-        <Card className="mb-6 p-4">
-          <p className="text-sm text-muted-foreground">
-            본인인증·계좌·포트폴리오 확인 후 관리자가 SceneFinder 인증 여부를 심사합니다. 별도로
-            요청하실 절차는 없어요.
-          </p>
-        </Card>
-      )}
-
-      <div className="flex flex-col gap-6">
+      <section
+        id="panel-basic"
+        role="tabpanel"
+        aria-labelledby="tab-basic"
+        hidden={tab !== "basic"}
+      >
+        <ProfileSettings
+          key={profile.id}
+          profile={profile}
+          token={token}
+          categories={categories}
+          captureModes={captureModes}
+          onSaved={setProfile}
+        />
+      </section>
+      <section
+        id="panel-portfolio"
+        role="tabpanel"
+        aria-labelledby="tab-portfolio"
+        hidden={tab !== "portfolio"}
+      >
         <PortfolioManager
           photographerId={profile.id}
           token={token}
-          categories={categories}
+          categories={supportedCategories}
           portfolios={profile.portfolios}
-          onChange={(portfolios) => setProfile({ ...profile, portfolios })}
+          onChange={(portfolios) =>
+            setProfile((previous) => ({ ...previous, portfolios }))
+          }
         />
+      </section>
+      <section
+        id="panel-packages"
+        role="tabpanel"
+        aria-labelledby="tab-packages"
+        hidden={tab !== "packages"}
+      >
         <PackageManager
           photographerId={profile.id}
           token={token}
           verified={profile.verificationStatus === "verified"}
           packages={profile.packages}
-          categories={categories}
-          captureModes={captureModes}
-          onChange={(packages) => setProfile({ ...profile, packages })}
+          categories={supportedCategories}
+          captureModes={supportedModes}
+          onChange={(packages) =>
+            setProfile((previous) => ({ ...previous, packages }))
+          }
         />
-        <AvailabilityManager photographerId={profile.id} token={token} />
-      </div>
-    </div>
+      </section>
+      <Link
+        href="/studio/schedule"
+        className="sf-link inline-flex items-center gap-2 text-sm"
+      >
+        <Icon name="calendar" />
+        촬영 일정과 휴무일 관리하기
+      </Link>
+    </StudioPage>
   );
 }
