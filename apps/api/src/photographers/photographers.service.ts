@@ -9,6 +9,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApplyPhotographerDto } from './dto/apply-photographer.dto';
 import { SearchPhotographersQueryDto } from './dto/search-photographers-query.dto';
 import { AddAvailabilityDto } from './dto/add-availability.dto';
+import {
+  photographerSummarySelect,
+  toPhotographerSummary,
+} from './photographer-summary';
+import {
+  captureModesIncluding,
+  captureRequirements,
+} from './capture-capabilities';
 
 const BUSINESS_REG_NO_PATTERN = /^\d{10}$/;
 
@@ -37,8 +45,10 @@ export class PhotographersService {
       data: {
         userId,
         photographerType: dto.photographerType,
-        businessRegNo: dto.photographerType === 'business' ? dto.businessRegNo : null,
-        businessName: dto.photographerType === 'business' ? dto.businessName : null,
+        businessRegNo:
+          dto.photographerType === 'business' ? dto.businessRegNo : null,
+        businessName:
+          dto.photographerType === 'business' ? dto.businessName : null,
         representativeName:
           dto.photographerType === 'business' ? dto.representativeName : null,
         settlementAccount: dto.settlementAccount,
@@ -66,7 +76,10 @@ export class PhotographersService {
     if (!photographer) {
       throw new NotFoundException('작가 지원 정보를 먼저 등록해주세요.');
     }
-    if (photographer.photographerType !== 'business' || !photographer.businessRegNo) {
+    if (
+      photographer.photographerType !== 'business' ||
+      !photographer.businessRegNo
+    ) {
       throw new BadRequestException(
         '프리랜서 작가는 사업자 인증 절차가 필요 없습니다. 관리자 심사를 통해 SceneFinder 인증을 받아요.',
       );
@@ -113,21 +126,41 @@ export class PhotographersService {
         responseTimeAvgMin: true,
         createdAt: true,
         user: { select: { name: true } },
-        portfolios: { include: { category: true }, orderBy: { sortOrder: 'asc' } },
-        packages: true,
+        portfolios: {
+          include: { category: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        packages: { orderBy: { basePrice: 'asc' } },
+        _count: {
+          select: {
+            bookings: { where: { review: { is: { isBlinded: false } } } },
+          },
+        },
       },
     });
     if (!photographer) {
       throw new NotFoundException('작가를 찾을 수 없습니다.');
     }
-    return photographer;
+    return {
+      ...photographer,
+      displayName:
+        photographer.businessName?.trim() ||
+        photographer.user.name.trim() ||
+        '사진작가',
+      avgRating:
+        photographer.avgRating === null ? null : Number(photographer.avgRating),
+      reviewCount: photographer._count.bookings,
+    };
   }
 
   async getByUserId(userId: string) {
     return this.prisma.photographer.findUnique({
       where: { userId },
       include: {
-        portfolios: { include: { category: true }, orderBy: { sortOrder: 'asc' } },
+        portfolios: {
+          include: { category: true },
+          orderBy: { sortOrder: 'asc' },
+        },
         packages: true,
       },
     });
@@ -140,8 +173,11 @@ export class PhotographersService {
     if (!photographer) {
       throw new NotFoundException('작가를 찾을 수 없습니다.');
     }
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+    }).format(new Date());
     return this.prisma.photographerAvailability.findMany({
-      where: { photographerId, date: { gte: new Date() } },
+      where: { photographerId, date: { gte: new Date(today) } },
       orderBy: { date: 'asc' },
     });
   }
@@ -186,8 +222,20 @@ export class PhotographersService {
     if (photographer?.userId !== userId) {
       throw new ForbiddenException('본인 휴무일만 삭제할 수 있습니다.');
     }
-    await this.prisma.photographerAvailability.delete({ where: { id: dateId } });
+    await this.prisma.photographerAvailability.delete({
+      where: { id: dateId },
+    });
     return { id: dateId, deleted: true };
+  }
+
+  async listRegions() {
+    const photographers = await this.prisma.photographer.findMany({
+      where: { verificationStatus: 'verified', user: { status: 'active' } },
+      select: { activeRegions: true },
+    });
+    return [...new Set(photographers.flatMap((p) => p.activeRegions))]
+      .filter((region) => region.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'ko'));
   }
 
   async search(query: SearchPhotographersQueryDto) {
@@ -200,33 +248,57 @@ export class PhotographersService {
       requiresBusiness = category?.businessOnly ?? false;
     }
 
-    return this.prisma.photographer.findMany({
+    const photographers = await this.prisma.photographer.findMany({
       where: {
         verificationStatus: 'verified',
+        user: { status: 'active' },
         ...(query.category ? { categories: { has: query.category } } : {}),
         ...(query.region ? { activeRegions: { has: query.region } } : {}),
         ...(query.captureMode
-          ? { captureCapabilities: { has: query.captureMode } }
+          ? {
+              AND: captureRequirements(query.captureMode).map((part) => ({
+                captureCapabilities: { hasSome: captureModesIncluding(part) },
+              })),
+            }
           : {}),
         ...(requiresBusiness ? { photographerType: 'business' as const } : {}),
+        ...(query.date
+          ? { unavailableDates: { none: { date: new Date(query.date) } } }
+          : {}),
       },
       select: {
-        id: true,
-        businessName: true,
-        photographerType: true,
-        activeRegions: true,
-        moodTags: true,
-        categories: true,
-        captureCapabilities: true,
-        avgRating: true,
-        completedBookingsCount: true,
-        portfolios: {
+        ...photographerSummarySelect,
+        packages: {
           take: 1,
-          orderBy: { sortOrder: 'asc' },
-          select: { imageUrl: true },
+          orderBy: { basePrice: 'asc' },
+          where: {
+            ...(query.category ? { category: query.category } : {}),
+            ...(query.captureMode
+              ? {
+                  captureModeCode: {
+                    in: captureModesIncluding(query.captureMode),
+                  },
+                }
+              : {}),
+          },
+          select: { basePrice: true, durationMin: true },
         },
       },
-      orderBy: { avgRating: 'desc' },
+      orderBy:
+        query.sort === 'newest'
+          ? [{ createdAt: 'desc' }, { id: 'asc' }]
+          : [
+              { avgRating: { sort: 'desc', nulls: 'last' } },
+              { completedBookingsCount: 'desc' },
+              { id: 'asc' },
+            ],
     });
+    const results = photographers.map(toPhotographerSummary);
+    if (query.sort === 'price') {
+      results.sort(
+        (a, b) => (a.startingPrice ?? Infinity) - (b.startingPrice ?? Infinity),
+      );
+    }
+    return results;
   }
 }

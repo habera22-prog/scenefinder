@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { consumeAuthReturn } from "@/lib/auth-return";
 import { KakaoLoginButton } from "@/components/auth/KakaoLoginButton";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
@@ -60,7 +61,9 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       if (isKakaoLink && !kakaoTicket) {
-        setError("카카오 연결 정보가 만료되었습니다. 카카오 로그인을 다시 시도해주세요.");
+        setError(
+          "카카오 연결 정보가 만료되었습니다. 카카오 로그인을 다시 시도해주세요.",
+        );
         return;
       }
       const session = await verifyOtp(phone, code);
@@ -68,7 +71,7 @@ function LoginForm() {
         await linkKakaoAccount(kakaoTicket, session.accessToken);
         window.sessionStorage.removeItem("scenefinder.kakao-ticket");
       }
-      router.push("/");
+      router.push(consumeAuthReturn());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "인증에 실패했습니다.");
     } finally {
@@ -89,7 +92,8 @@ function LoginForm() {
 
       {isKakaoLink && (
         <p className="mb-4 rounded-lg bg-brand/5 p-3 text-sm text-muted-foreground">
-          카카오 계정과 같은 이메일 또는 휴대전화번호로 가입한 계정이 있습니다. 해당 계정으로 인증하면 카카오 로그인을 연결합니다.
+          카카오 계정과 같은 이메일 또는 휴대전화번호로 가입한 계정이 있습니다.
+          해당 계정으로 인증하면 카카오 로그인을 연결합니다.
         </p>
       )}
 
@@ -154,7 +158,9 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex-1 py-16 text-center">불러오는 중...</div>}>
+    <Suspense
+      fallback={<div className="flex-1 py-16 text-center">불러오는 중...</div>}
+    >
       <LoginForm />
     </Suspense>
   );

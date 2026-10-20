@@ -7,7 +7,7 @@ export const Input = forwardRef<
   return (
     <input
       ref={ref}
-      className={`h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 ${className}`}
+      className={`sf-input min-h-13 w-full min-w-0 rounded-xl px-4 py-3.5 text-base ${className}`}
       {...props}
     />
   );
@@ -21,7 +21,7 @@ export const Textarea = forwardRef<
   return (
     <textarea
       ref={ref}
-      className={`w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 ${className}`}
+      className={`sf-input w-full rounded-xl px-4 py-3.5 text-base ${className}`}
       {...props}
     />
   );
@@ -38,7 +38,7 @@ export function Label({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-sm font-medium text-foreground"
+      className="mb-2 block text-sm font-semibold text-[var(--foreground)]"
     >
       {children}
     </label>

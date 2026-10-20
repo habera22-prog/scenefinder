@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { BookingStatus, Prisma } from '@scenefinder/database';
+import type { Prisma } from '@scenefinder/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -84,9 +84,7 @@ export class BookingsService {
         location: dto.location,
         headcount: dto.headcount,
         purpose: dto.purpose,
-        requiredScenes: dto.requiredScenes as
-          | Prisma.InputJsonValue
-          | undefined,
+        requiredScenes: dto.requiredScenes as Prisma.InputJsonValue | undefined,
         taxInvoiceRequired: dto.taxInvoiceRequired ?? false,
         status: 'inquiry',
         chatRoom: { create: {} },
@@ -230,12 +228,19 @@ export class BookingsService {
     }
 
     if (query.status) {
-      where.status = query.status as BookingStatus;
+      where.status = query.status;
     }
 
     return this.prisma.booking.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: {
+        photographer: {
+          select: { businessName: true, user: { select: { name: true } } },
+        },
+        customer: { select: { name: true } },
+        shootCategory: { select: { label: true } },
+      },
     });
   }
 
@@ -401,7 +406,10 @@ export class BookingsService {
         '일정 변경으로 인한 재계약',
       );
       if (newVersion && newVersion.version > 1) {
-        const photographerUserId = await this.otherPartyUserId(booking, 'customer');
+        const photographerUserId = await this.otherPartyUserId(
+          booking,
+          'customer',
+        );
         await Promise.all([
           this.notifications.create(
             booking.customerId,

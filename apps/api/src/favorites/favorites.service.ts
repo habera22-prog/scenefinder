@@ -1,5 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  photographerSummarySelect,
+  toPhotographerSummary,
+} from '../photographers/photographer-summary';
 
 @Injectable()
 export class FavoritesService {
@@ -36,25 +44,21 @@ export class FavoritesService {
     return { success: true };
   }
 
-  listForCustomer(customerId: string) {
-    return this.prisma.favorite.findMany({
+  async listForCustomer(customerId: string) {
+    const favorites = await this.prisma.favorite.findMany({
       where: { customerId },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         createdAt: true,
         photographer: {
-          select: {
-            id: true,
-            businessName: true,
-            activeRegions: true,
-            moodTags: true,
-            categories: true,
-            avgRating: true,
-            completedBookingsCount: true,
-          },
+          select: photographerSummarySelect,
         },
       },
     });
+    return favorites.map((favorite) => ({
+      ...favorite,
+      photographer: toPhotographerSummary(favorite.photographer),
+    }));
   }
 }

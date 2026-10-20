@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { consumeAuthReturn } from "@/lib/auth-return";
 
 function KakaoCallback() {
   const router = useRouter();
@@ -49,7 +50,7 @@ function KakaoCallback() {
           router.replace(`${signupUrl.pathname}${signupUrl.search}`);
           return;
         }
-        router.replace("/");
+        router.replace(consumeAuthReturn());
       })
       .catch(() => {
         setError("카카오 로그인에 실패했습니다. 다시 시도해주세요.");

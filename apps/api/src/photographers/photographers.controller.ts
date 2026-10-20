@@ -40,6 +40,11 @@ export class PhotographersController {
     return this.photographersService.search(query);
   }
 
+  @Get('regions')
+  listRegions() {
+    return this.photographersService.listRegions();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getMyProfile(@CurrentUser() user: AuthenticatedUser) {

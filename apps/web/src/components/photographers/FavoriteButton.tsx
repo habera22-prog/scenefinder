@@ -1,3 +1,5 @@
+import { Icon } from "@/components/ui/Icon";
+
 export function FavoriteButton({
   isFavorited,
   isBusy,
@@ -15,11 +17,13 @@ export function FavoriteButton({
       onClick={onToggle}
       disabled={isBusy}
       aria-label={isFavorited ? "찜 해제" : "찜하기"}
-      className={`text-lg leading-none transition-colors disabled:opacity-50 ${
-        isFavorited ? "text-danger" : "text-muted-foreground hover:text-danger"
-      } ${className}`}
+      aria-pressed={isFavorited}
+      className={`sf-favorite inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50 ${className}`}
     >
-      {isFavorited ? "♥" : "♡"}
+      <Icon
+        name="heart"
+        className={`h-5 w-5 ${isFavorited ? "fill-current" : ""}`}
+      />
     </button>
   );
 }

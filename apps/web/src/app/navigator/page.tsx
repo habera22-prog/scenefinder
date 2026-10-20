@@ -1,238 +1,270 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { CaptureMode, ShootCategory } from "@/lib/types";
+import { CATEGORY_DETAILS, koreaToday } from "@/lib/discovery";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { Input, Label } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
-
-const MOODS = [
-  "밝고 화사",
-  "자연스럽고 생생",
-  "전문적이고 정돈",
-  "따뜻하고 감성적",
-  "고급스럽고 차분",
-  "시네마틱",
-];
-
-type Step = "category" | "captureMode" | "mood" | "conditions";
-const STEPS: Step[] = ["category", "captureMode", "mood", "conditions"];
 
 export default function NavigatorPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<ShootCategory[] | null>(null);
-  const [captureModes, setCaptureModes] = useState<CaptureMode[] | null>(null);
+  const [captureModes, setCaptureModes] = useState<CaptureMode[]>([]);
+  const [regions, setRegions] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [step, setStep] = useState<Step>("category");
-  const [categoryCode, setCategoryCode] = useState<string | null>(null);
-  const [captureModeCode, setCaptureModeCode] = useState<string | null>(null);
-  const [mood, setMood] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const [step, setStep] = useState(1);
+  const [category, setCategory] = useState("");
+  const [captureMode, setCaptureMode] = useState("");
   const [region, setRegion] = useState("");
-  const [headcount, setHeadcount] = useState("");
-  const [purpose, setPurpose] = useState("");
+  const [date, setDate] = useState("");
 
   useEffect(() => {
+    let active = true;
     apiFetch<ShootCategory[]>("/shoot-categories")
-      .then(setCategories)
-      .catch((err) =>
-        setLoadError(
-          err instanceof ApiError ? err.message : "촬영 종류를 불러오지 못했습니다.",
-        ),
-      );
+      .then((data) => {
+        if (active) {
+          setCategories(data);
+          setLoadError(null);
+        }
+      })
+      .catch((err) => {
+        if (active)
+          setLoadError(
+            err instanceof ApiError
+              ? err.message
+              : "촬영 종류를 불러오지 못했어요. 다시 시도해주세요.",
+          );
+      });
     apiFetch<CaptureMode[]>("/capture-modes")
-      .then(setCaptureModes)
+      .then((data) => {
+        if (active) setCaptureModes(data);
+      })
       .catch(() => {});
-  }, []);
+    apiFetch<string[]>("/photographers/regions")
+      .then((data) => {
+        if (active) setRegions(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [refresh]);
 
-  const stepIndex = STEPS.indexOf(step);
-
-  function goToResults() {
-    const params = new URLSearchParams();
-    if (categoryCode) params.set("category", categoryCode);
-    if (captureModeCode) params.set("captureMode", captureModeCode);
+  function goToResults(e: React.FormEvent) {
+    e.preventDefault();
+    const params = new URLSearchParams({ category });
+    if (captureMode) params.set("captureMode", captureMode);
     if (region) params.set("region", region);
-    router.push(`/photographers?${params.toString()}`);
+    if (date) params.set("date", date);
+    router.push(`/photographers?${params}`);
   }
+  const selected = categories?.find((c) => c.code === category);
 
   return (
-    <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 sm:px-6">
-      <div className="mb-8 flex gap-1.5">
-        {STEPS.map((s, i) => (
-          <div
-            key={s}
-            className={`h-1.5 flex-1 rounded-full ${
-              i <= stepIndex ? "bg-brand" : "bg-border"
-            }`}
-          />
-        ))}
+    <div className="mx-auto w-full max-w-[640px] px-5 pt-9 pb-12">
+      <Link
+        href={step === 1 ? "/" : "#"}
+        onClick={(e) => {
+          if (step === 2) {
+            e.preventDefault();
+            setStep(1);
+          }
+        }}
+        className="sf-tab mb-7 inline-flex items-center gap-1 text-sm"
+      >
+        <Icon name="back" className="h-4 w-4" />
+        {step === 1 ? "홈으로" : "촬영 종류 다시 고르기"}
+      </Link>
+      <div className="mb-6 flex items-center justify-between text-sm">
+        <span className="font-semibold text-[var(--brand-text)]">
+          내 촬영에 맞게 찾기
+        </span>
+        <span className="text-[var(--muted-foreground)]">{step} / 2</span>
+      </div>
+      <div
+        className="mb-8 grid grid-cols-2 gap-2"
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={2}
+        aria-valuenow={step}
+        aria-label="작가 찾기 진행 단계"
+      >
+        <div className="h-1 rounded-full bg-[var(--brand)]" />
+        <div
+          className={`h-1 rounded-full ${step === 2 ? "bg-[var(--brand)]" : "bg-[var(--border)]"}`}
+        />
       </div>
 
-      <Card className="p-8">
-        {step === "category" && (
-          <>
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              1단계 · 촬영 종류
-            </p>
-            <h2 className="mb-6 text-xl font-bold text-foreground">
-              어떤 촬영을 찾고 계신가요?
-            </h2>
-            {loadError && <p className="text-sm text-danger">{loadError}</p>}
-            {!categories && !loadError && (
-              <Spinner className="h-6 w-6 text-brand" />
-            )}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {categories?.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCategoryCode(c.code)}
-                  className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
-                    categoryCode === c.code
-                      ? "border-brand bg-brand-muted text-brand"
-                      : "border-border bg-card text-foreground hover:border-brand/50"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-8 flex justify-end">
-              <Button disabled={!categoryCode} onClick={() => setStep("captureMode")}>
-                다음
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === "captureMode" && (
-          <>
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              2단계 · 촬영 방식
-            </p>
-            <h2 className="mb-6 text-xl font-bold text-foreground">
-              어떤 방식으로 촬영할까요?
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {captureModes?.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setCaptureModeCode(m.code)}
-                  className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
-                    captureModeCode === m.code
-                      ? "border-brand bg-brand-muted text-brand"
-                      : "border-border bg-card text-foreground hover:border-brand/50"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-              <button
-                onClick={() => setCaptureModeCode(null)}
-                className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
-                  captureModeCode === null
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-border bg-card text-foreground hover:border-brand/50"
-                }`}
+      {step === 1 ? (
+        <section>
+          <h1 className="text-[26px] leading-snug font-bold">
+            어떤 순간을
+            <br />
+            사진으로 남기고 싶으세요?
+          </h1>
+          <p className="mt-3 text-[17px] text-[var(--muted-foreground)]">
+            원하는 촬영을 하나 골라주세요.
+          </p>
+          {loadError && (
+            <Card className="mt-6 p-5">
+              <p role="alert" className="text-sm text-[var(--danger)]">
+                {loadError}
+              </p>
+              <Button
+                variant="secondary"
+                className="mt-3"
+                onClick={() => setRefresh(refresh + 1)}
               >
-                잘 모르겠어요 / 작가 추천
+                다시 불러오기
+              </Button>
+            </Card>
+          )}
+          {!categories && !loadError && (
+            <div role="status" className="py-12">
+              <Spinner className="h-7 w-7 text-[var(--brand)]" />
+              <span className="sr-only">촬영 종류 불러오는 중</span>
+            </div>
+          )}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {categories?.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={category === item.code}
+                onClick={() => setCategory(item.code)}
+                className="sf-choice min-h-32 rounded-2xl p-5 text-left"
+              >
+                <Icon
+                  name={CATEGORY_DETAILS[item.code]?.icon || "camera"}
+                  className="mb-3 h-6 w-6 text-[var(--brand-text)]"
+                />
+                <span className="block text-[17px] font-semibold">
+                  {item.label}
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  {CATEGORY_DETAILS[item.code]?.description ||
+                    "나에게 맞는 촬영 작가 찾기"}
+                </span>
               </button>
-            </div>
-            <div className="mt-8 flex justify-between">
-              <Button variant="secondary" onClick={() => setStep("category")}>
-                이전
-              </Button>
-              <Button onClick={() => setStep("mood")}>다음</Button>
-            </div>
-          </>
-        )}
-
-        {step === "mood" && (
-          <>
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              3단계 · 분위기
+            ))}
+          </div>
+          {categories?.length === 0 && (
+            <p className="mt-6 text-[var(--muted-foreground)]">
+              촬영 종류를 준비하고 있어요. 전체 작가를 먼저 둘러보세요.
             </p>
-            <h2 className="mb-6 text-xl font-bold text-foreground">
-              원하시는 촬영 분위기는요?
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {MOODS.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMood(m)}
-                  className={`rounded-xl border p-4 text-sm font-medium transition-colors ${
-                    mood === m
-                      ? "border-brand bg-brand-muted text-brand"
-                      : "border-border bg-card text-foreground hover:border-brand/50"
-                  }`}
+          )}
+          <Button
+            size="lg"
+            className="mt-7 w-full"
+            disabled={!category}
+            onClick={() => {
+              setStep(2);
+              window.scrollTo({ top: 0 });
+            }}
+          >
+            다음
+            <Icon name="arrow" />
+          </Button>
+          <Link
+            href="/photographers"
+            className="sf-link mt-5 block text-center text-sm"
+          >
+            전체 작가 먼저 둘러보기
+          </Link>
+        </section>
+      ) : (
+        <form onSubmit={goToResults}>
+          <h1 className="text-[26px] leading-snug font-bold">
+            어디에서, 언제
+            <br />
+            촬영하고 싶으세요?
+          </h1>
+          <p className="mt-3 text-[17px] leading-relaxed text-[var(--muted-foreground)]">
+            아직 정하지 않았다면 비워두세요.
+            <br />
+            작가와 상담하면서 정해도 괜찮아요.
+          </p>
+          <Card className="mt-6 flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-muted)] text-[var(--brand-text)]">
+              <Icon name={CATEGORY_DETAILS[category]?.icon || "camera"} />
+            </span>
+            <div className="flex-1">
+              <p className="text-xs text-[var(--muted-foreground)]">
+                선택한 촬영
+              </p>
+              <p className="font-semibold">{selected?.label}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+              변경
+            </Button>
+          </Card>
+          <div className="mt-6 space-y-6">
+            <div>
+              <Label htmlFor="region">촬영 지역</Label>
+              <select
+                id="region"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="sf-input min-h-13 w-full rounded-xl px-4 py-3.5 text-base"
+              >
+                <option value="">전체 지역</option>
+                {regions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="date">희망 날짜</Label>
+              <Input
+                id="date"
+                type="date"
+                min={koreaToday()}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+              <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                선택한 날짜가 휴무인 작가는 제외해요.
+                <br />
+                촬영 가능 시간은 작가와 상담 후 확정해요.
+              </p>
+            </div>
+            {captureModes.length > 0 && (
+              <div>
+                <Label htmlFor="captureMode">촬영 방식</Label>
+                <select
+                  id="captureMode"
+                  value={captureMode}
+                  onChange={(e) => setCaptureMode(e.target.value)}
+                  className="sf-input min-h-13 w-full rounded-xl px-4 py-3.5 text-base"
                 >
-                  {m}
-                </button>
-              ))}
-            </div>
-            <div className="mt-8 flex justify-between">
-              <Button variant="secondary" onClick={() => setStep("captureMode")}>
-                이전
-              </Button>
-              <Button disabled={!mood} onClick={() => setStep("conditions")}>
-                다음
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === "conditions" && (
-          <>
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              4단계 · 촬영 조건
-            </p>
-            <h2 className="mb-6 text-xl font-bold text-foreground">
-              촬영 조건을 알려주세요
-            </h2>
-            <div className="flex flex-col gap-4">
-              <div>
-                <Label htmlFor="region">활동 지역</Label>
-                <Input
-                  id="region"
-                  placeholder="예: 서울"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                />
+                  <option value="">잘 모르겠어요 · 작가와 상담할게요</option>
+                  {captureModes.map((m) => (
+                    <option key={m.id} value={m.code}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <Label htmlFor="headcount">인원</Label>
-                <Input
-                  id="headcount"
-                  type="number"
-                  min={1}
-                  value={headcount}
-                  onChange={(e) => setHeadcount(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="purpose">사용 목적</Label>
-                <Input
-                  id="purpose"
-                  placeholder="예: 회사 창립기념 행사 스냅"
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                />
-              </div>
-            </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              최저가 순이 아닌 분야 적합도·분위기·일정·지역·후기를 종합한 적합도 순으로 추천해드려요.
-            </p>
-            <div className="mt-8 flex justify-between">
-              <Button variant="secondary" onClick={() => setStep("mood")}>
-                이전
-              </Button>
-              <Button onClick={goToResults}>작가 추천받기</Button>
-            </div>
-          </>
-        )}
-      </Card>
+            )}
+          </div>
+          <Button type="submit" size="lg" className="mt-8 w-full">
+            이 조건으로 작가 보기
+            <Icon name="search" />
+          </Button>
+          <p className="mt-3 text-center text-xs text-[var(--muted-foreground)]">
+            작품과 기본 가격을 보고 자유롭게 비교하세요
+          </p>
+        </form>
+      )}
     </div>
   );
 }

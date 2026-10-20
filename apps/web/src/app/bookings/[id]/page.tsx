@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { apiFetch, ApiError, uploadFile } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { Booking, Message, Payment } from "@/lib/types";
@@ -17,8 +18,16 @@ import { PaymentDisclosure } from "@/components/bookings/PaymentDisclosure";
 import { DisputeAction } from "@/components/disputes/DisputeAction";
 import { ContractView } from "@/components/bookings/ContractView";
 import { CouponApply } from "@/components/bookings/CouponApply";
+import { Icon } from "@/components/ui/Icon";
+import { rememberAuthReturn } from "@/lib/auth-return";
 
-const CANCELLABLE_STATUSES = ["inquiry", "quoted", "held", "deposit_paid", "confirmed"];
+const CANCELLABLE_STATUSES = [
+  "inquiry",
+  "quoted",
+  "held",
+  "deposit_paid",
+  "confirmed",
+];
 const RESCHEDULABLE_STATUSES = ["held", "deposit_paid", "confirmed"];
 const CONTRACT_VISIBLE_STATUSES = [
   "held",
@@ -60,29 +69,43 @@ export default function BookingRoomPage() {
   const [messageInput, setMessageInput] = useState("");
   const [contact, setContact] = useState<{
     customer: { name: string; phone: string; email: string };
-    photographer: { name: string; phone: string; email: string; businessName: string };
+    photographer: {
+      name: string;
+      phone: string;
+      email: string;
+      businessName: string;
+    };
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState("");
   const [quoteDurationMin, setQuoteDurationMin] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesPaneRef = useRef<HTMLDivElement>(null);
+  const followMessagesRef = useRef(true);
 
   const loadBooking = useCallback(async () => {
     if (!token) return;
     try {
       const data = await apiFetch<Booking>(`/bookings/${params.id}`, { token });
       setBooking(data);
+      setError(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "예약 정보를 불러오지 못했습니다.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "예약 정보를 불러오지 못했습니다.",
+      );
     }
   }, [params.id, token]);
 
   const loadMessages = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await apiFetch<Message[]>(`/bookings/${params.id}/messages`, { token });
+      const data = await apiFetch<Message[]>(
+        `/bookings/${params.id}/messages`,
+        { token },
+      );
       setMessages(data);
     } catch {
       // 폴링 중 일시 오류는 조용히 무시
@@ -92,17 +115,24 @@ export default function BookingRoomPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
+      rememberAuthReturn(`/bookings/${params.id}`);
       router.push("/login");
       return;
     }
-    loadBooking();
-    loadMessages();
+    const initialLoad = window.setTimeout(() => {
+      void loadBooking();
+      void loadMessages();
+    }, 0);
     const interval = setInterval(loadMessages, 4000);
-    return () => clearInterval(interval);
-  }, [authLoading, user, router, loadBooking, loadMessages]);
+    return () => {
+      window.clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
+  }, [authLoading, user, router, loadBooking, loadMessages, params.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const pane = messagesPaneRef.current;
+    if (pane && followMessagesRef.current) pane.scrollTop = pane.scrollHeight;
   }, [messages]);
 
   async function sendMessage(e: React.FormEvent) {
@@ -115,9 +145,12 @@ export default function BookingRoomPage() {
         body: { type: "text", content: messageInput },
       });
       setMessageInput("");
+      followMessagesRef.current = true;
       loadMessages();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "메시지 전송에 실패했습니다.");
+      setActionError(
+        err instanceof ApiError ? err.message : "메시지 전송에 실패했습니다.",
+      );
     }
   }
 
@@ -128,7 +161,9 @@ export default function BookingRoomPage() {
       await fn();
       await loadBooking();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "처리 중 오류가 발생했습니다.");
+      setActionError(
+        err instanceof ApiError ? err.message : "처리 중 오류가 발생했습니다.",
+      );
     } finally {
       setIsBusy(false);
     }
@@ -149,56 +184,80 @@ export default function BookingRoomPage() {
 
   async function acceptQuote() {
     await runAction(async () => {
-      await apiFetch(`/bookings/${params.id}/accept-quote`, { method: "POST", token });
+      await apiFetch(`/bookings/${params.id}/accept-quote`, {
+        method: "POST",
+        token,
+      });
     });
   }
 
   async function payDeposit() {
     await runAction(async () => {
-      const req = await apiFetch<{ paymentId: string; orderId: string; amount: number }>(
-        `/bookings/${params.id}/payments/deposit`,
-        { method: "POST", token },
-      );
+      const req = await apiFetch<{
+        paymentId: string;
+        orderId: string;
+        amount: number;
+      }>(`/bookings/${params.id}/payments/deposit`, { method: "POST", token });
       await apiFetch<Payment>(`/payments/${req.paymentId}/confirm`, {
         method: "POST",
         token,
-        body: { paymentKey: `mock_${req.paymentId}`, orderId: req.orderId, amount: req.amount },
+        body: {
+          paymentKey: `mock_${req.paymentId}`,
+          orderId: req.orderId,
+          amount: req.amount,
+        },
       });
     });
   }
 
   async function payBalance() {
     await runAction(async () => {
-      const req = await apiFetch<{ paymentId: string; orderId: string; amount: number }>(
-        `/bookings/${params.id}/payments/balance`,
-        { method: "POST", token },
-      );
+      const req = await apiFetch<{
+        paymentId: string;
+        orderId: string;
+        amount: number;
+      }>(`/bookings/${params.id}/payments/balance`, { method: "POST", token });
       await apiFetch<Payment>(`/payments/${req.paymentId}/confirm`, {
         method: "POST",
         token,
-        body: { paymentKey: `mock_${req.paymentId}`, orderId: req.orderId, amount: req.amount },
+        body: {
+          paymentKey: `mock_${req.paymentId}`,
+          orderId: req.orderId,
+          amount: req.amount,
+        },
       });
     });
   }
 
   async function markComplete() {
     await runAction(async () => {
-      await apiFetch(`/bookings/${params.id}/complete`, { method: "POST", token });
+      await apiFetch(`/bookings/${params.id}/complete`, {
+        method: "POST",
+        token,
+      });
     });
   }
 
   async function confirmDelivery(deliveryId: string) {
     await runAction(async () => {
-      await apiFetch(`/deliveries/${deliveryId}/confirm`, { method: "POST", token });
+      await apiFetch(`/deliveries/${deliveryId}/confirm`, {
+        method: "POST",
+        token,
+      });
     });
   }
 
   async function viewContact() {
     try {
-      const data = await apiFetch<typeof contact>(`/bookings/${params.id}/contact`, { token });
+      const data = await apiFetch<typeof contact>(
+        `/bookings/${params.id}/contact`,
+        { token },
+      );
       setContact(data);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "연락처 조회에 실패했습니다.");
+      setActionError(
+        err instanceof ApiError ? err.message : "연락처 조회에 실패했습니다.",
+      );
     }
   }
 
@@ -216,283 +275,388 @@ export default function BookingRoomPage() {
   const contactVisible = booking.chatRoom?.contactDisclosed ?? false;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
-      <div className="flex flex-1 flex-col gap-4">
-        <Card className="flex flex-col p-0">
-          <div className="border-b border-border px-4 py-3">
+    <div className="mx-auto w-full max-w-5xl flex-1 px-5 pt-9 pb-24">
+      <div className="mb-6">
+        <Link
+          href={`/me/bookings?role=${isCustomerSide ? "customer" : "photographer"}`}
+          className="sf-tab mb-5 inline-flex items-center gap-1 text-sm"
+        >
+          <Icon name="back" className="h-4 w-4" />내 예약으로
+        </Link>
+        <h1 className="text-[26px] leading-snug font-bold">
+          {isCustomerSide ? "작가와 촬영을 준비해요" : "고객과 촬영을 준비해요"}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
+          {isCustomerSide
+            ? "촬영 조건과 견적을 확인하고, 궁금한 점은 메시지로 물어보세요."
+            : "촬영 조건을 확인하고 고객에게 답변을 보내주세요."}
+        </p>
+      </div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="order-2 flex min-w-0 flex-1 flex-col gap-4 lg:order-1">
+          <Card className="flex flex-col p-0">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="font-semibold">촬영 상담 메시지</h2>
+            </div>
+            <div
+              ref={messagesPaneRef}
+              onScroll={(event) => {
+                const pane = event.currentTarget;
+                followMessagesRef.current =
+                  pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
+              }}
+              className="flex h-96 flex-col gap-2 overflow-y-auto p-4"
+            >
+              {messages.length === 0 && (
+                <p className="my-auto text-center text-sm leading-relaxed text-[var(--muted-foreground)]">
+                  {isCustomerSide
+                    ? "촬영 문의가 전달됐어요.\n원하는 분위기나 궁금한 점을 메시지로 남겨주세요."
+                    : "새 촬영 문의가 도착했어요. 고객에게 인사와 함께 답변을 보내주세요."}
+                </p>
+              )}
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${
+                    m.senderId === user?.id
+                      ? "ml-auto bg-brand text-brand-foreground"
+                      : "bg-muted text-foreground"
+                  }`}
+                >
+                  {m.content}
+                  {m.piiFlag && (
+                    <p className="mt-1 text-[10px] opacity-75">
+                      ⚠ 개인정보가 포함된 것으로 감지되었습니다
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <form
+              onSubmit={sendMessage}
+              className="flex gap-2 border-t border-border p-3"
+            >
+              <Input
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                placeholder="메시지를 입력하세요"
+                className="min-w-0 flex-1"
+              />
+              <Button type="submit" className="shrink-0">
+                전송
+              </Button>
+            </form>
+          </Card>
+        </div>
+
+        <div className="order-1 flex w-full flex-col gap-4 lg:order-2 lg:w-80">
+          <Card className="p-4">
             <Badge>{STATUS_LABEL[booking.status] ?? booking.status}</Badge>
-          </div>
-          <div className="flex h-96 flex-col gap-2 overflow-y-auto p-4">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${
-                  m.senderId === user?.id
-                    ? "ml-auto bg-brand text-brand-foreground"
-                    : "bg-muted text-foreground"
-                }`}
+            {isCustomerSide && booking.photographer && (
+              <p className="mt-3 text-lg font-bold">
+                {booking.photographer.businessName ||
+                  booking.photographer.user?.name ||
+                  "사진작가"}
+              </p>
+            )}
+            <h3 className="mt-4 mb-3 text-sm font-semibold text-muted-foreground">
+              촬영 정보
+            </h3>
+            <dl className="flex flex-col gap-3 text-sm [&_dd]:min-w-0 [&_dd]:max-w-[70%] [&_dd]:wrap-anywhere [&_dd]:text-right [&_dt]:shrink-0">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">일시</dt>
+                <dd>
+                  {booking.shootDatetime
+                    ? new Date(booking.shootDatetime).toLocaleString("ko-KR")
+                    : "-"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">장소</dt>
+                <dd>{booking.location ?? "-"}</dd>
+              </div>
+              {booking.location &&
+                booking.photographer &&
+                booking.photographer.activeRegions.length > 0 &&
+                !booking.photographer.activeRegions.some((r) =>
+                  booking.location!.includes(r),
+                ) && (
+                  <p className="text-xs text-amber-600">
+                    작가의 활동 지역(
+                    {booking.photographer.activeRegions.join(", ")}) 밖의
+                    장소예요. 출장비 등 추가 협의가 필요할 수 있어요.
+                  </p>
+                )}
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">인원</dt>
+                <dd>{booking.headcount ?? "-"}명</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">목적</dt>
+                <dd>{booking.purpose ?? "-"}</dd>
+              </div>
+              {booking.totalAmount !== null && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">총 금액</dt>
+                  <dd>{booking.totalAmount.toLocaleString()}원</dd>
+                </div>
+              )}
+            </dl>
+
+            {contactVisible && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-3 w-full"
+                onClick={viewContact}
               >
-                {m.content}
-                {m.piiFlag && (
-                  <p className="mt-1 text-[10px] opacity-75">
-                    ⚠ 개인정보가 포함된 것으로 감지되었습니다
+                연락처 보기
+              </Button>
+            )}
+            {contact && (
+              <div className="mt-2 rounded-lg bg-muted p-3 text-xs">
+                <p>
+                  고객: {contact.customer.name} · {contact.customer.phone}
+                </p>
+                <p className="mt-1">
+                  작가: {contact.photographer.name} ·{" "}
+                  {contact.photographer.phone}
+                </p>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              다음 단계
+            </h3>
+            {actionError && (
+              <p className="mb-2 text-sm text-danger">{actionError}</p>
+            )}
+
+            {booking.status === "inquiry" && isPhotographerSide && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="quote-amount">견적 금액(원)</Label>
+                <Input
+                  id="quote-amount"
+                  type="number"
+                  value={quoteAmount}
+                  onChange={(e) => setQuoteAmount(e.target.value)}
+                />
+                {!booking.packageId && (
+                  <>
+                    <Label htmlFor="quote-duration">촬영 시간(분)</Label>
+                    <Input
+                      id="quote-duration"
+                      type="number"
+                      value={quoteDurationMin}
+                      onChange={(e) => setQuoteDurationMin(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      상품 없는 맞춤 견적은 분야별 시간당 최저가 검증을 위해
+                      촬영 시간이 필요해요.
+                    </p>
+                  </>
+                )}
+                <Button
+                  disabled={
+                    isBusy ||
+                    !quoteAmount ||
+                    (!booking.packageId && !quoteDurationMin)
+                  }
+                  onClick={submitQuote}
+                >
+                  견적 제시하기
+                </Button>
+              </div>
+            )}
+            {booking.status === "inquiry" && isCustomerSide && (
+              <p className="text-sm text-muted-foreground">
+                작가의 견적을 기다리고 있어요.
+              </p>
+            )}
+
+            {booking.status === "quoted" && (
+              <div className="flex flex-col gap-2 text-sm">
+                <p>
+                  총액 {booking.totalAmount?.toLocaleString()}원 · 예약금{" "}
+                  {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
+                  {booking.balanceAmount?.toLocaleString()}원
+                </p>
+                {isCustomerSide && (
+                  <CouponApply
+                    booking={booking}
+                    token={token}
+                    onDone={loadBooking}
+                  />
+                )}
+                {isCustomerSide ? (
+                  <Button disabled={isBusy} onClick={acceptQuote}>
+                    견적 수락하기
+                  </Button>
+                ) : (
+                  <p className="text-muted-foreground">
+                    고객의 수락을 기다리고 있어요.
                   </p>
                 )}
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-          <form onSubmit={sendMessage} className="flex gap-2 border-t border-border p-3">
-            <Input
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="메시지를 입력하세요"
-              className="min-w-0 flex-1"
-            />
-            <Button type="submit" className="shrink-0">
-              전송
-            </Button>
-          </form>
-        </Card>
-      </div>
-
-      <div className="flex w-full flex-col gap-4 lg:w-80">
-        <Card className="p-4">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            촬영 정보
-          </h3>
-          <dl className="flex flex-col gap-1.5 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">일시</dt>
-              <dd>{booking.shootDatetime ? new Date(booking.shootDatetime).toLocaleString("ko-KR") : "-"}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">장소</dt>
-              <dd>{booking.location ?? "-"}</dd>
-            </div>
-            {booking.location &&
-              booking.photographer &&
-              booking.photographer.activeRegions.length > 0 &&
-              !booking.photographer.activeRegions.some((r) =>
-                booking.location!.includes(r),
-              ) && (
-                <p className="text-xs text-amber-600">
-                  작가의 활동 지역({booking.photographer.activeRegions.join(", ")}) 밖의
-                  장소예요. 출장비 등 추가 협의가 필요할 수 있어요.
-                </p>
-              )}
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">인원</dt>
-              <dd>{booking.headcount ?? "-"}명</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">목적</dt>
-              <dd>{booking.purpose ?? "-"}</dd>
-            </div>
-            {booking.totalAmount !== null && (
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">총 금액</dt>
-                <dd>{booking.totalAmount.toLocaleString()}원</dd>
-              </div>
             )}
-          </dl>
 
-          {contactVisible && (
-            <Button size="sm" variant="secondary" className="mt-3 w-full" onClick={viewContact}>
-              연락처 보기
-            </Button>
-          )}
-          {contact && (
-            <div className="mt-2 rounded-lg bg-muted p-3 text-xs">
-              <p>고객: {contact.customer.name} · {contact.customer.phone}</p>
-              <p className="mt-1">작가: {contact.photographer.name} · {contact.photographer.phone}</p>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            다음 단계
-          </h3>
-          {actionError && <p className="mb-2 text-sm text-danger">{actionError}</p>}
-
-          {booking.status === "inquiry" && isPhotographerSide && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="quote-amount">견적 금액(원)</Label>
-              <Input
-                id="quote-amount"
-                type="number"
-                value={quoteAmount}
-                onChange={(e) => setQuoteAmount(e.target.value)}
-              />
-              {!booking.packageId && (
+            {booking.status === "held" &&
+              isCustomerSide &&
+              booking.photographer &&
+              booking.totalAmount !== null && (
                 <>
-                  <Label htmlFor="quote-duration">촬영 시간(분)</Label>
-                  <Input
-                    id="quote-duration"
-                    type="number"
-                    value={quoteDurationMin}
-                    onChange={(e) => setQuoteDurationMin(e.target.value)}
+                  <PaymentDisclosure
+                    photographer={booking.photographer}
+                    totalAmount={booking.totalAmount}
+                    payingLabel="예약금 (30%)"
+                    payingAmount={booking.depositAmount ?? 0}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    상품 없는 맞춤 견적은 분야별 시간당 최저가 검증을 위해 촬영 시간이 필요해요.
-                  </p>
+                  <Button
+                    disabled={isBusy}
+                    onClick={payDeposit}
+                    className="w-full"
+                  >
+                    {isBusy
+                      ? "처리 중..."
+                      : `예약금 ${booking.depositAmount?.toLocaleString()}원 결제하기`}
+                  </Button>
                 </>
               )}
+
+            {booking.status === "deposit_paid" &&
+              isCustomerSide &&
+              booking.photographer &&
+              booking.totalAmount !== null && (
+                <>
+                  <PaymentDisclosure
+                    photographer={booking.photographer}
+                    totalAmount={booking.totalAmount}
+                    payingLabel="잔금"
+                    payingAmount={booking.balanceAmount ?? 0}
+                  />
+                  <Button
+                    disabled={isBusy}
+                    onClick={payBalance}
+                    className="w-full"
+                  >
+                    {isBusy
+                      ? "처리 중..."
+                      : `잔금 ${booking.balanceAmount?.toLocaleString()}원 결제하기`}
+                  </Button>
+                </>
+              )}
+
+            {booking.status === "confirmed" && isPhotographerSide && (
               <Button
-                disabled={isBusy || !quoteAmount || (!booking.packageId && !quoteDurationMin)}
-                onClick={submitQuote}
+                disabled={isBusy}
+                onClick={markComplete}
+                className="w-full"
               >
-                견적 제시하기
+                촬영완료 처리하기
               </Button>
-            </div>
-          )}
-          {booking.status === "inquiry" && isCustomerSide && (
-            <p className="text-sm text-muted-foreground">작가의 견적을 기다리고 있어요.</p>
-          )}
-
-          {booking.status === "quoted" && (
-            <div className="flex flex-col gap-2 text-sm">
-              <p>
-                총액 {booking.totalAmount?.toLocaleString()}원 · 예약금{" "}
-                {booking.depositAmount?.toLocaleString()}원 · 잔금{" "}
-                {booking.balanceAmount?.toLocaleString()}원
-              </p>
-              {isCustomerSide && (
-                <CouponApply booking={booking} token={token} onDone={loadBooking} />
-              )}
-              {isCustomerSide ? (
-                <Button disabled={isBusy} onClick={acceptQuote}>
-                  견적 수락하기
-                </Button>
-              ) : (
-                <p className="text-muted-foreground">고객의 수락을 기다리고 있어요.</p>
-              )}
-            </div>
-          )}
-
-          {booking.status === "held" &&
-            isCustomerSide &&
-            booking.photographer &&
-            booking.totalAmount !== null && (
-              <>
-                <PaymentDisclosure
-                  photographer={booking.photographer}
-                  totalAmount={booking.totalAmount}
-                  payingLabel="예약금 (30%)"
-                  payingAmount={booking.depositAmount ?? 0}
-                />
-                <Button disabled={isBusy} onClick={payDeposit} className="w-full">
-                  {isBusy
-                    ? "처리 중..."
-                    : `예약금 ${booking.depositAmount?.toLocaleString()}원 결제하기`}
-                </Button>
-              </>
             )}
-
-          {booking.status === "deposit_paid" &&
-            isCustomerSide &&
-            booking.photographer &&
-            booking.totalAmount !== null && (
-              <>
-                <PaymentDisclosure
-                  photographer={booking.photographer}
-                  totalAmount={booking.totalAmount}
-                  payingLabel="잔금"
-                  payingAmount={booking.balanceAmount ?? 0}
-                />
-                <Button disabled={isBusy} onClick={payBalance} className="w-full">
-                  {isBusy
-                    ? "처리 중..."
-                    : `잔금 ${booking.balanceAmount?.toLocaleString()}원 결제하기`}
-                </Button>
-              </>
-            )}
-
-          {booking.status === "confirmed" && isPhotographerSide && (
-            <Button disabled={isBusy} onClick={markComplete} className="w-full">
-              촬영완료 처리하기
-            </Button>
-          )}
-          {booking.status === "confirmed" && isCustomerSide && (
-            <p className="text-sm text-muted-foreground">작가가 촬영을 진행할 예정이에요.</p>
-          )}
-
-          {booking.status === "completed" && isPhotographerSide && (
-            <PhotoUploadAction bookingId={booking.id} token={token} onDone={loadBooking} />
-          )}
-          {booking.status === "completed" && isCustomerSide && (
-            <p className="text-sm text-muted-foreground">작가가 사진을 준비 중이에요.</p>
-          )}
-
-          {booking.status === "delivered" && isCustomerSide && (
-            <div className="flex flex-col gap-2">
+            {booking.status === "confirmed" && isCustomerSide && (
               <p className="text-sm text-muted-foreground">
-                사진이 도착했어요. 확인 후 후기를 남겨주세요.
+                작가가 촬영을 진행할 예정이에요.
               </p>
-              {booking.deliveries?.[0] && (
-                <Button
-                  disabled={isBusy}
-                  onClick={() => confirmDelivery(booking.deliveries![0].id)}
-                >
-                  납품 확인하기
-                </Button>
-              )}
-            </div>
-          )}
-          {booking.status === "delivered" && isPhotographerSide && (
-            <p className="text-sm text-muted-foreground">고객의 납품 확인을 기다리고 있어요.</p>
+            )}
+
+            {booking.status === "completed" && isPhotographerSide && (
+              <PhotoUploadAction
+                bookingId={booking.id}
+                token={token}
+                onDone={loadBooking}
+              />
+            )}
+            {booking.status === "completed" && isCustomerSide && (
+              <p className="text-sm text-muted-foreground">
+                작가가 사진을 준비 중이에요.
+              </p>
+            )}
+
+            {booking.status === "delivered" && isCustomerSide && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">
+                  사진이 도착했어요. 확인 후 후기를 남겨주세요.
+                </p>
+                {booking.deliveries?.[0] && (
+                  <Button
+                    disabled={isBusy}
+                    onClick={() => confirmDelivery(booking.deliveries![0].id)}
+                  >
+                    납품 확인하기
+                  </Button>
+                )}
+              </div>
+            )}
+            {booking.status === "delivered" && isPhotographerSide && (
+              <p className="text-sm text-muted-foreground">
+                고객의 납품 확인을 기다리고 있어요.
+              </p>
+            )}
+
+            {booking.status === "closed" && isPhotographerSide && (
+              <p className="text-sm text-muted-foreground">
+                거래가 종료되었습니다. 이용해주셔서 감사합니다.
+              </p>
+            )}
+            {booking.status === "cancelled" && (
+              <p className="text-sm text-muted-foreground">
+                취소된 예약입니다.
+              </p>
+            )}
+            {booking.status === "disputed" && (
+              <p className="text-sm text-muted-foreground">
+                분쟁 처리 중인 예약입니다.
+              </p>
+            )}
+
+            {RESCHEDULABLE_STATUSES.includes(booking.status) && user && (
+              <RescheduleAction
+                bookingId={booking.id}
+                token={token}
+                side={isCustomerSide ? "customer" : "photographer"}
+                pending={
+                  booking.rescheduleRequests?.find(
+                    (r) => r.status === "pending",
+                  ) ?? null
+                }
+                onDone={loadBooking}
+              />
+            )}
+
+            {CANCELLABLE_STATUSES.includes(booking.status) && user && (
+              <CancelBookingAction
+                bookingId={booking.id}
+                token={token}
+                initiatedBy={isCustomerSide ? "customer" : "photographer"}
+                onCancelled={loadBooking}
+              />
+            )}
+          </Card>
+
+          {booking.status === "closed" && isCustomerSide && (
+            <ReviewForm bookingId={booking.id} token={token} />
           )}
 
-          {booking.status === "closed" && isPhotographerSide && (
-            <p className="text-sm text-muted-foreground">
-              거래가 종료되었습니다. 이용해주셔서 감사합니다.
-            </p>
-          )}
-          {booking.status === "cancelled" && (
-            <p className="text-sm text-muted-foreground">취소된 예약입니다.</p>
-          )}
-          {booking.status === "disputed" && (
-            <p className="text-sm text-muted-foreground">분쟁 처리 중인 예약입니다.</p>
+          {DISPUTABLE_STATUSES.includes(booking.status) && user && (
+            <DisputeAction
+              bookingId={booking.id}
+              token={token}
+              onReported={loadBooking}
+            />
           )}
 
-          {RESCHEDULABLE_STATUSES.includes(booking.status) && user && (
-            <RescheduleAction
+          {CONTRACT_VISIBLE_STATUSES.includes(booking.status) && user && (
+            <ContractView
               bookingId={booking.id}
               token={token}
               side={isCustomerSide ? "customer" : "photographer"}
-              pending={
-                booking.rescheduleRequests?.find((r) => r.status === "pending") ?? null
-              }
-              onDone={loadBooking}
             />
           )}
-
-          {CANCELLABLE_STATUSES.includes(booking.status) && user && (
-            <CancelBookingAction
-              bookingId={booking.id}
-              token={token}
-              initiatedBy={isCustomerSide ? "customer" : "photographer"}
-              onCancelled={loadBooking}
-            />
-          )}
-        </Card>
-
-        {booking.status === "closed" && isCustomerSide && (
-          <ReviewForm bookingId={booking.id} token={token} />
-        )}
-
-        {DISPUTABLE_STATUSES.includes(booking.status) && user && (
-          <DisputeAction bookingId={booking.id} token={token} onReported={loadBooking} />
-        )}
-
-        {CONTRACT_VISIBLE_STATUSES.includes(booking.status) && user && (
-          <ContractView
-            bookingId={booking.id}
-            token={token}
-            side={isCustomerSide ? "customer" : "photographer"}
-          />
-        )}
+        </div>
       </div>
     </div>
   );
@@ -528,7 +692,9 @@ function PhotoUploadAction({
       });
       onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "사진 전달에 실패했습니다.");
+      setError(
+        err instanceof ApiError ? err.message : "사진 전달에 실패했습니다.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -549,7 +715,9 @@ function PhotoUploadAction({
           className="block w-full text-sm"
         />
       </label>
-      {isUploading && <p className="mt-2 text-sm text-muted-foreground">업로드 중...</p>}
+      {isUploading && (
+        <p className="mt-2 text-sm text-muted-foreground">업로드 중...</p>
+      )}
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
     </div>
   );

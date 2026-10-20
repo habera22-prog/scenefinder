@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { consumeAuthReturn } from "@/lib/auth-return";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +34,9 @@ function SignupForm() {
     if (!isKakaoSignup) return;
     const timer = window.setTimeout(() => {
       setKakaoTicket(window.sessionStorage.getItem("scenefinder.kakao-ticket"));
-      const rawProfile = window.sessionStorage.getItem("scenefinder.kakao-profile");
+      const rawProfile = window.sessionStorage.getItem(
+        "scenefinder.kakao-profile",
+      );
       if (!rawProfile) return;
       try {
         const profile = JSON.parse(rawProfile) as {
@@ -41,7 +44,8 @@ function SignupForm() {
           email?: string | null;
         };
         if (profile.name) setName((current) => current || profile.name || "");
-        if (profile.email) setEmail((current) => current || profile.email || "");
+        if (profile.email)
+          setEmail((current) => current || profile.email || "");
       } catch {
         window.sessionStorage.removeItem("scenefinder.kakao-profile");
       }
@@ -55,7 +59,13 @@ function SignupForm() {
     setIsSubmitting(true);
     try {
       if (isKakaoSignup && kakaoTicket) {
-        await signupWithKakao({ ticket: kakaoTicket, role, name, email, phone });
+        await signupWithKakao({
+          ticket: kakaoTicket,
+          role,
+          name,
+          email,
+          phone,
+        });
       } else if (isKakaoSignup) {
         setError("카카오 로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
         return;
@@ -68,11 +78,18 @@ function SignupForm() {
       }
       setStep("otp");
     } catch (err) {
-      if (isKakaoSignup && kakaoTicket && err instanceof ApiError && err.status === 409) {
+      if (
+        isKakaoSignup &&
+        kakaoTicket &&
+        err instanceof ApiError &&
+        err.status === 409
+      ) {
         router.push("/login?kakaoLink=1");
         return;
       }
-      setError(err instanceof ApiError ? err.message : "가입 요청에 실패했습니다.");
+      setError(
+        err instanceof ApiError ? err.message : "가입 요청에 실패했습니다.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -84,7 +101,14 @@ function SignupForm() {
     setIsSubmitting(true);
     try {
       const { user } = await verifyOtp(phone, code);
-      router.push(user.role === "photographer" ? "/photographers/apply" : "/");
+      const returnTo = consumeAuthReturn();
+      router.push(
+        returnTo !== "/"
+          ? returnTo
+          : user.role === "photographer"
+            ? "/photographers/apply"
+            : "/",
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "인증에 실패했습니다.");
     } finally {

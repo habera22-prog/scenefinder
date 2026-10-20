@@ -32,15 +32,27 @@ export type PhotographerType = "business" | "freelancer";
 
 export interface PhotographerSummary {
   id: string;
+  displayName?: string;
   businessName: string | null;
   photographerType?: PhotographerType;
+  verificationStatus?: "pending" | "verified" | "rejected";
   activeRegions: string[];
   moodTags: string[];
   categories: string[];
   captureCapabilities?: string[];
   avgRating: number | null;
   completedBookingsCount: number;
+  reviewCount?: number;
+  startingPrice?: number | null;
+  startingDurationMin?: number | null;
   portfolios?: { imageUrl: string }[];
+}
+
+export interface PhotographerReview {
+  id: string;
+  ratingOverall: number;
+  category: string | null;
+  content: string | null;
 }
 
 export interface Portfolio {
@@ -175,6 +187,9 @@ export interface BookingListItem {
   location: string | null;
   totalAmount: number | null;
   createdAt: string;
+  photographer?: { businessName: string | null; user: { name: string } };
+  customer?: { name: string };
+  shootCategory?: { label: string };
 }
 
 export type MessageType = "text" | "image" | "file" | "location" | "system";
@@ -234,10 +249,7 @@ export interface FavoriteItem {
 
 export type DisputeType = "quality" | "noshow" | "delay" | "other";
 export type DisputeStatus =
-  | "open"
-  | "fact_check_requested"
-  | "resolved"
-  | "escalated";
+  "open" | "fact_check_requested" | "resolved" | "escalated";
 
 export interface Dispute {
   id: string;
@@ -300,7 +312,10 @@ export interface AdminBookingListItem {
   photographer: { businessName: string };
 }
 
-export interface AdminBookingDetail extends Omit<Booking, "customer" | "photographer"> {
+export interface AdminBookingDetail extends Omit<
+  Booking,
+  "customer" | "photographer"
+> {
   customer: { name: string; phone: string | null; email: string };
   photographer: {
     photographerType: PhotographerType;
@@ -333,7 +348,12 @@ export interface AdminBookingDetail extends Omit<Booking, "customer" | "photogra
   chatRoom: {
     id: string;
     contactDisclosed: boolean;
-    messages: { id: string; senderId: string; content: string; createdAt: string }[];
+    messages: {
+      id: string;
+      senderId: string;
+      content: string;
+      createdAt: string;
+    }[];
   } | null;
 }
 

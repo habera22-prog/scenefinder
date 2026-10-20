@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -13,14 +12,10 @@ const pretendard = localFont({
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "씬파인더 | SceneFinder",
-  description: "촬영 목적에 맞는 사진작가를 찾고 예약부터 결제, 소통, 결과물 전달까지 한 번에.",
+  description:
+    "촬영 목적에 맞는 사진작가를 찾고 예약부터 결제, 소통, 결과물 전달까지 한 번에.",
 };
 
 export default function RootLayout({
@@ -29,11 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${pretendard.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col">
+    <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col font-sans">
         <AuthProvider>
           <Header />
           <main className="flex flex-1 flex-col">{children}</main>

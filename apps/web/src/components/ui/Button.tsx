@@ -8,28 +8,22 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
 }
 
-const variantClasses: Record<Variant, string> = {
-  primary:
-    "bg-brand text-brand-foreground hover:opacity-90 disabled:opacity-50",
-  secondary:
-    "bg-muted text-foreground hover:bg-border disabled:opacity-50",
-  ghost:
-    "bg-transparent text-foreground hover:bg-muted disabled:opacity-50",
-  danger: "bg-danger text-white hover:opacity-90 disabled:opacity-50",
+const sizeClasses: Record<Size, string> = {
+  sm: "min-h-10 px-3 text-sm",
+  md: "min-h-12 px-5 py-3 text-base",
+  lg: "min-h-14 px-6 py-3.5 text-[17px]",
 };
 
-const sizeClasses: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-6 text-base",
-};
+export function buttonStyles(variant: Variant = "primary", size: Size = "md") {
+  return `sf-button sf-button-${variant} inline-flex items-center justify-center gap-2 rounded-xl font-semibold ${sizeClasses[size]}`;
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = "", variant = "primary", size = "md", ...props }, ref) => {
     return (
       <button
         ref={ref}
-        className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+        className={`${buttonStyles(variant, size)} ${className}`}
         {...props}
       />
     );
